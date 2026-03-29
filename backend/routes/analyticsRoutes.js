@@ -1,16 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getEmployeeAnalytics,
-  getManagerAnalytics,
-  getAdminAnalytics
+  getSummary,
+  getCharts
 } = require('../controllers/analyticsController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
 router.use(protect);
 
-router.get('/employee', getEmployeeAnalytics);
-router.get('/manager', authorize('manager'), getManagerAnalytics);
-router.get('/admin', authorize('admin'), getAdminAnalytics);
+router.get('/summary', getSummary);
+router.get('/charts', getCharts);
 
 module.exports = router;

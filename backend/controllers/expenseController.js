@@ -151,3 +151,50 @@ exports.getMyExpenses = async (req, res, next) => {
     next(error);
   }
 };
+// @desc    Get team expenses
+// @route   GET /api/expenses/team
+// @access  Private (Manager/Admin)
+exports.getTeamExpenses = async (req, res, next) => {
+  try {
+    let query = { companyId: req.user.companyId };
+
+    if (req.user.role === 'manager') {
+      const team = await User.find({ managerId: req.user._id }).select('_id');
+      const teamIds = team.map(u => u._id);
+      query.userId = { $in: teamIds };
+    }
+
+    const expenses = await Expense.find(query)
+      .sort('-createdAt')
+      .populate('userId', 'name role email')
+      .populate('approvalFlow.approverId', 'name');
+
+    res.status(200).json({
+      success: true,
+      count: expenses.length,
+      expenses
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all company expenses
+// @route   GET /api/expenses/all
+// @access  Private (Admin)
+exports.getAllCompanyExpenses = async (req, res, next) => {
+  try {
+    const expenses = await Expense.find({ companyId: req.user.companyId })
+      .sort('-createdAt')
+      .populate('userId', 'name role email')
+      .populate('approvalFlow.approverId', 'name');
+
+    res.status(200).json({
+      success: true,
+      count: expenses.length,
+      expenses
+    });
+  } catch (error) {
+    next(error);
+  }
+};

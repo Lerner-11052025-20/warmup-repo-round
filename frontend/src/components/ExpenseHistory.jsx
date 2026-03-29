@@ -252,9 +252,14 @@ const ExpenseHistory = ({ user }) => {
                                 </p>
                               </div>
                               {expense.receiptUrl && (
-                                <button className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline">
-                                  <Download size={14} /> Download Receipt Proof
-                                </button>
+                                <a 
+                                  href={expense.receiptUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline"
+                                >
+                                  <Download size={14} /> View / Download Receipt Proof
+                                </a>
                               )}
                             </div>
 
