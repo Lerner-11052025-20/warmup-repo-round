@@ -39,4 +39,11 @@ export const authAPI = {
   forgotPassword: (data) => API.post('/auth/forgot-password', data)
 };
 
+// User Management API calls (Admin only)
+export const userAPI = {
+  createUser: (data) => API.post('/users', data),
+  getUsers: () => API.get('/users'),
+  getManagers: () => API.get('/users/managers')
+};
+
 export default API;
