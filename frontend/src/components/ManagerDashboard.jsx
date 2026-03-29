@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { approvalAPI } from '../services/api';
 import { 
   CheckCircle2, XCircle, Clock, Search, Filter, 
   ChevronDown, ChevronUp, FileText, User, Receipt, 
-  MessageSquare, History, ArrowRight, TrendingUp
+  MessageSquare, History, ArrowRight, TrendingUp, BarChart3, PieChart as PieIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+} from 'recharts';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
@@ -17,6 +20,15 @@ export default function ManagerDashboard() {
   const [expandedId, setExpandedId] = useState(null);
   const [actioningId, setActioningId] = useState(null);
   const [comment, setComment] = useState('');
+
+  // ─── Analytics Helpers ───
+  const categoryStats = useMemo(() => {
+    const stats = {};
+    pending.forEach(exp => {
+      stats[exp.category] = (stats[exp.category] || 0) + exp.amount;
+    });
+    return Object.entries(stats).map(([name, amount]) => ({ name, amount }));
+  }, [pending]);
 
   const fetchPending = async () => {
     try {
@@ -74,6 +86,51 @@ export default function ManagerDashboard() {
           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{pending.length} Pending</span>
         </div>
       </div>
+
+      {/* ─── Queue Analytics ─── */}
+      {!loading && pending.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        >
+          {/* Status Card */}
+          <div className="bg-gradient-to-br from-primary-600 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-primary-500/20 flex flex-col justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Queue Total</p>
+              <h2 className="text-3xl font-black">₹{pending.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</h2>
+            </div>
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10 text-[11px] font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Real-time synchronization active
+            </div>
+          </div>
+
+          {/* Graph Card */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-hidden">
+             <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                   <BarChart3 size={14} /> Amount by Category
+                </h3>
+             </div>
+             <div className="h-32 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryStats}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F020" />
+                    <Tooltip 
+                      cursor={{fill: 'transparent'}}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                    />
+                    <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={24}>
+                      {categoryStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#6366f1' : '#818cf8'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+             </div>
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid gap-4">
         {loading ? (

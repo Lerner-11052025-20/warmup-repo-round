@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const renderContent = () => {
     // 1. Common Tab: History
     if (activeTab === 'history') return <ExpenseHistory user={user} />
-    
+
     // 2. Tab: Analytics (All Roles) - Now dedicated for graphs
     if (activeTab === 'analytics') return <AnalyticsDashboard role={user?.role} />
 
@@ -63,21 +63,21 @@ export default function DashboardPage() {
           <RoleDashboardSummary role={user?.role} />
           {['employee', 'manager'].includes(user?.role) && (
             <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-10">
-               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Create New Reimbursement</h3>
-               <EmployeeDashboard hideHistory={true} /> 
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Create New Reimbursement</h3>
+              <EmployeeDashboard hideHistory={true} />
             </div>
           )}
         </div>
       )
     }
-    
+
     // 4. Admin Specific Tabs
     if (user?.role === 'admin') {
       if (activeTab === 'users') return renderUserManagement()
       if (activeTab === 'rules') return <AdminApprovalRules />
       if (activeTab === 'approvals') return <ManagerDashboard />
     }
-    
+
     // 5. Manager Specific Tabs
     if (user?.role === 'manager') {
       if (activeTab === 'approvals') return <ManagerDashboard />
@@ -108,7 +108,7 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {loadingUsers ? (
           <div className="p-8 space-y-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-14 skeleton rounded-xl" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-14 skeleton rounded-xl" />)}
           </div>
         ) : companyUsers.length === 0 ? (
           <div className="p-12 text-center">
@@ -130,9 +130,8 @@ export default function DashboardPage() {
                   <tr key={u._id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold ${
-                          u.role === 'admin' ? 'bg-violet-500' : u.role === 'manager' ? 'bg-blue-500' : 'bg-emerald-500'
-                        }`}>
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold ${u.role === 'admin' ? 'bg-violet-500' : u.role === 'manager' ? 'bg-blue-500' : 'bg-emerald-500'
+                          }`}>
                           {u.name?.charAt(0)}
                         </div>
                         <div>

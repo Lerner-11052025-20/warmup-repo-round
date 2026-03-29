@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  History, Search, Filter, ChevronDown, ChevronUp, 
-  CheckCircle2, Clock, XCircle, FileText, 
-  DollarSign, Download, ArrowRight, User, Info, Calendar
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, Cell, PieChart, Pie
+} from 'recharts';
+import { 
+  History, Search, Filter, ChevronDown, ChevronUp, 
+  CheckCircle2, Clock, XCircle, FileText, 
+  DollarSign, Download, ArrowRight, User, Info, Calendar,
+  TrendingUp, BarChart3, PieChart as PieIcon, Activity
+} from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -82,6 +87,16 @@ const ExpenseHistory = ({ user }) => {
     });
   }, [expenses, searchQuery, statusFilter, categoryFilter]);
 
+  // ─── Analytics Trend Calculation ───
+  const trendData = useMemo(() => {
+    const data = filteredExpenses.reduce((acc, exp) => {
+      const date = new Date(exp.expenseDate).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + exp.amount;
+      return acc;
+    }, {});
+    return Object.entries(data).map(([date, amount]) => ({ date, amount })).reverse().slice(-7);
+  }, [filteredExpenses]);
+
   const getStatusRef = (status) => {
     switch (status) {
       case 'approved': return { color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20', icon: CheckCircle2, label: 'Approved' };
@@ -134,6 +149,52 @@ const ExpenseHistory = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* ─── Trend Analytics ─── */}
+      {!loading && filteredExpenses.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 p-8 shadow-sm"
+        >
+           <div className="flex items-center justify-between mb-8">
+              <div>
+                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500 mb-1 flex items-center gap-2">
+                    <Activity size={14} /> Spending Velocity
+                 </h3>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Historical Expenditure Trends (Daily)</p>
+              </div>
+              <div className="flex items-center gap-4">
+                 <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase leading-tight">Displayed Total</p>
+                    <p className="text-lg font-black text-slate-900 dark:text-white">₹{filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</p>
+                 </div>
+              </div>
+           </div>
+
+           <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F010" />
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                  <Area 
+                    type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorAmount)" 
+                    animationDuration={1500}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+           </div>
+        </motion.div>
+      )}
 
       {/* History List */}
       <div className="grid gap-4">
