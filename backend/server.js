@@ -46,12 +46,14 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {

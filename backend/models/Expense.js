@@ -50,7 +50,21 @@ const expenseSchema = new mongoose.Schema(
     },
     receiptUrl: {
       type: String
-    }
+    },
+    currentApproverId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    approvalFlow: [
+      {
+        step: Number,
+        approverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        comment: String,
+        actionDate: Date
+      }
+    ]
   },
   { timestamps: true }
 );

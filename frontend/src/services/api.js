@@ -65,4 +65,10 @@ export const uploadAPI = {
   }
 };
 
+// Approval API
+export const approvalAPI = {
+  getPendingApprovals: () => API.get('/approvals/pending'),
+  actionApproval: (data) => API.post('/approvals/action', data) // { expenseId, action: 'approve' | 'reject', comment }
+};
+
 export default API;
