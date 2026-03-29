@@ -52,4 +52,17 @@ export const expenseAPI = {
   getMyExpenses: () => API.get('/expenses/my')
 };
 
+// Upload API
+export const uploadAPI = {
+  uploadReceipt: (file) => {
+    const formData = new FormData()
+    formData.append('receipt', file)
+    return API.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  }
+};
+
 export default API;

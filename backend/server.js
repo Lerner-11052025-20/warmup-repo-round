@@ -42,9 +42,16 @@ app.use(cors({
 }));
 
 // ─── API Routes ───
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/expenses', require('./routes/expenseRoutes'));
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {

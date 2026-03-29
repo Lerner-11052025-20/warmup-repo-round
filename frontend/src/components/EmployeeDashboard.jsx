@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { expenseAPI } from '../services/api';
+import { expenseAPI, uploadAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Plus, Search, Filter, Paperclip, CheckCircle2, 
-  Clock, XCircle, FileText, Upload, Trash2, ArrowRight
+  Clock, XCircle, FileText, Upload, Trash2, ArrowRight, Receipt
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -38,6 +38,8 @@ export default function EmployeeDashboard() {
   const [formData, setFormData] = useState(initialForm);
   const [selectedExpense, setSelectedExpense] = useState(null); // When clicking a row
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load expenses
   useEffect(() => {
@@ -88,6 +90,7 @@ export default function EmployeeDashboard() {
 
   const handleRowClick = (val) => {
     setSelectedExpense(val);
+    setReceiptFile(null);
     setFormData({
       description: val.description,
       category: val.category,
@@ -103,6 +106,17 @@ export default function EmployeeDashboard() {
   const handleAddNew = () => {
     setSelectedExpense(null);
     setFormData(initialForm);
+    setReceiptFile(null);
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => { setIsDragging(false); };
+  const handleDrop = (e) => {
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) setReceiptFile(e.dataTransfer.files[0]);
+  };
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) setReceiptFile(e.target.files[0]);
   };
 
   const handleSubmit = async (e, forceStatus) => {
@@ -114,8 +128,20 @@ export default function EmployeeDashboard() {
 
     setIsSubmitting(true);
     try {
+      let finalReceiptUrl = formData.receiptUrl;
+
+      // Un-select or modify receipt URL if new file added
+      if (receiptFile) {
+        toast.loading('Uploading receipt...', { id: 'upload_toast' });
+        const { data: uploadData } = await uploadAPI.uploadReceipt(receiptFile);
+        finalReceiptUrl = uploadData.url;
+        console.log('✅ Cloudinary Receipt URL:', finalReceiptUrl); // Requested by user
+        toast.success('Receipt uploaded!', { id: 'upload_toast' });
+      }
+
       const payload = {
         ...formData,
+        receiptUrl: finalReceiptUrl,
         status: forceStatus || (selectedExpense ? selectedExpense.status : 'pending')
       };
       
@@ -129,7 +155,9 @@ export default function EmployeeDashboard() {
       fetchExpenses();
       setFormData(initialForm);
       setSelectedExpense(null);
+      setReceiptFile(null);
     } catch (error) {
+      toast.dismiss('upload_toast');
       toast.error(error.response?.data?.message || 'Submission failed');
     } finally {
       setIsSubmitting(false);
@@ -158,6 +186,8 @@ export default function EmployeeDashboard() {
   const activeStatusIndex = selectedExpense 
     ? STATUS_FLOW.findIndex(s => s.id === selectedExpense.status)
     : 0;
+
+  const isReadOnly = selectedExpense && selectedExpense.status !== 'draft';
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto items-start">
@@ -312,7 +342,7 @@ export default function EmployeeDashboard() {
       </div>
 
       {/* ─── RIGHT: EXPENSE FORM (30%) ─── */}
-      <div className="w-full lg:w-[30%] space-y-4">
+      <div className="w-full lg:w-[30%] space-y-4 lg:sticky lg:top-24">
         
         {/* Progress Flow visualization if editing */}
         <AnimatePresence mode="wait">
@@ -360,7 +390,7 @@ export default function EmployeeDashboard() {
           )}
         </AnimatePresence>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[calc(100vh-140px)] max-h-[800px]">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
           
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-900/50 rounded-t-2xl flex justify-between items-center">
             <h3 className="font-bold text-lg text-slate-900 dark:text-white">
@@ -376,31 +406,58 @@ export default function EmployeeDashboard() {
             )}
           </div>
 
-          <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="p-5 flex-1">
             <form id="expenseForm" onSubmit={(e) => handleSubmit(e, 'pending')} className="space-y-5">
               
               {/* Receipt Upload UI */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Receipt</label>
-                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 mb-2 group-hover:scale-110 transition-transform">
-                    <Upload size={18} />
+                {!isReadOnly ? (
+                  <label 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group relative overflow-hidden
+                      ${isDragging ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  >
+                    <input type="file" className="hidden" onChange={handleFileChange} accept="image/*,.pdf" />
+                    {receiptFile ? (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500 mb-2">
+                          <CheckCircle2 size={20} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{receiptFile.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">{(receiptFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 mb-2 group-hover:scale-110 transition-transform">
+                          <Upload size={18} />
+                        </div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click or drag & drop</p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold flex items-center">
+                          <ArrowRight size={10} className="mr-1 inline text-primary-500" /> OCR AI Auto-fill ready
+                        </p>
+                      </>
+                    )}
+                  </label>
+                ) : (
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center bg-slate-50 dark:bg-slate-800/50">
+                    <Paperclip size={18} className="text-slate-400 mr-2" />
+                    <span className="text-sm text-slate-600 dark:text-slate-300">
+                      {formData.receiptUrl ? 'Receipt Attached (View)' : 'No physical receipt'}
+                    </span>
                   </div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Click to upload or drag & drop</p>
-                  <p className="text-xs text-slate-400 mt-1">SVG, PNG, JPG or PDF (max. 10MB)</p>
-                  <p className="text-[10px] text-primary-500 mt-2 flex items-center font-semibold">
-                    <ArrowRight size={10} className="mr-1" /> OCR AI Auto-fill coming soon
-                  </p>
-                </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description <span className="text-red-500">*</span></label>
                 <input 
-                  type="text" name="description" required
+                  type="text" name="description" required disabled={isReadOnly}
                   value={formData.description} onChange={handleFormChange}
                   placeholder="e.g. Client Dinner at Dorsia"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                 />
               </div>
 
@@ -408,8 +465,8 @@ export default function EmployeeDashboard() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
                   <select 
-                    name="category" value={formData.category} onChange={handleFormChange}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none"
+                    name="category" value={formData.category} onChange={handleFormChange} disabled={isReadOnly}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                   >
                     <option>Travel</option><option>Meals</option><option>Supplies</option>
                     <option>Software</option><option>Training</option><option>Other</option>
@@ -418,9 +475,9 @@ export default function EmployeeDashboard() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date <span className="text-red-500">*</span></label>
                   <input 
-                    type="date" name="expenseDate" required
+                    type="date" name="expenseDate" required disabled={isReadOnly}
                     value={formData.expenseDate} onChange={handleFormChange}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                   />
                 </div>
               </div>
@@ -429,8 +486,8 @@ export default function EmployeeDashboard() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Paid By <span className="text-red-500">*</span></label>
                   <select 
-                    name="paidBy" value={formData.paidBy} onChange={handleFormChange}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none"
+                    name="paidBy" value={formData.paidBy} onChange={handleFormChange} disabled={isReadOnly}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                   >
                     <option value="self">Self (Reimbursable)</option>
                     <option value="company">Company Card</option>
@@ -439,8 +496,8 @@ export default function EmployeeDashboard() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Currency <span className="text-red-500">*</span></label>
                   <select 
-                    name="currency" value={formData.currency} onChange={handleFormChange}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none"
+                    name="currency" value={formData.currency} onChange={handleFormChange} disabled={isReadOnly}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                   >
                     <option value="USD">USD ($)</option><option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option><option value="INR">INR (₹)</option>
@@ -455,10 +512,10 @@ export default function EmployeeDashboard() {
                     {formData.currency === 'USD' ? '$' : formData.currency === 'EUR' ? '€' : formData.currency === 'GBP' ? '£' : '₹'}
                   </span>
                   <input 
-                    type="number" step="0.01" name="amount" required min="0"
+                    type="number" step="0.01" name="amount" required min="0" disabled={isReadOnly}
                     value={formData.amount} onChange={handleFormChange}
                     placeholder="0.00"
-                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-bold text-lg focus:ring-2 focus:ring-primary-500/50 outline-none"
+                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-bold text-lg focus:ring-2 focus:ring-primary-500/50 outline-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                   />
                 </div>
                 {formData.currency !== 'USD' && formData.amount && (
@@ -471,10 +528,10 @@ export default function EmployeeDashboard() {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Remarks</label>
                 <textarea 
-                  name="remarks" rows="2"
+                  name="remarks" rows="2" disabled={isReadOnly}
                   value={formData.remarks} onChange={handleFormChange}
                   placeholder="Any additional information..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none resize-none disabled:opacity-60 disabled:bg-slate-50 dark:disabled:bg-slate-900"
                 />
               </div>
 
