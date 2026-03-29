@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { userAPI } from '../services/api'
 import DashboardLayout from '../layouts/DashboardLayout'
 import CreateUserModal from '../components/CreateUserModal'
+import EmployeeDashboard from '../components/EmployeeDashboard'
 import {
   Users, UserPlus, Shield, User, Receipt, TrendingUp,
   Mail, Calendar, MoreVertical
@@ -45,7 +46,7 @@ export default function DashboardPage() {
       return renderAdminDashboard()
     }
     if (user?.role === 'manager') return renderManagerDashboard()
-    return renderEmployeeDashboard()
+    return <EmployeeDashboard />
   }
 
   // ─── ADMIN DASHBOARD ───
@@ -248,45 +249,7 @@ export default function DashboardPage() {
   )
 
   // ─── EMPLOYEE DASHBOARD ───
-  const renderEmployeeDashboard = () => (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
-        <div className="relative z-10">
-          <h1 className="text-2xl font-bold mb-1">Welcome, {user?.name}! 👋</h1>
-          <p className="text-white/80 text-sm">Employee Dashboard — Expense Tracker</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          { icon: Receipt, title: 'My Expenses', desc: 'View all submitted expenses', count: '0', color: 'text-emerald-500' },
-          { icon: TrendingUp, title: 'Approved', desc: 'Total approved reimbursements', count: '0', color: 'text-green-500' }
-        ].map((card, i) => (
-          <motion.div
-            key={card.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:shadow-lg transition-all"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <card.icon className={`w-8 h-8 ${card.color}`} />
-              <span className="text-2xl font-bold text-slate-900 dark:text-white">{card.count}</span>
-            </div>
-            <h3 className="font-semibold text-slate-900 dark:text-white">{card.title}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{card.desc}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-        <Receipt className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-1">No expenses yet</h3>
-        <p className="text-sm text-slate-400">Submit your first expense to get started</p>
-      </div>
-    </div>
-  )
+  // Moved to separate component: EmployeeDashboard.jsx
 
   return (
     <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>

@@ -46,4 +46,10 @@ export const userAPI = {
   getManagers: () => API.get('/users/managers')
 };
 
+// Expense API calls
+export const expenseAPI = {
+  createExpense: (data) => API.post('/expenses', data),
+  getMyExpenses: () => API.get('/expenses/my')
+};
+
 export default API;
