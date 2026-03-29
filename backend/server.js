@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-const socketUtil = require('./utils/socket');
+const socketUtil = require('./utils/socketUtil');
 
 // Load environment variables
 dotenv.config();
