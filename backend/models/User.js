@@ -44,13 +44,23 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    avatar: { type: String, default: '' },
+    phone: {
+      type: String,
+      maxlength: [15, 'Phone number cannot exceed 15 characters'],
+      default: ''
+    },
+    bio: {
+      type: String,
+      maxlength: [200, 'Bio cannot exceed 200 characters'],
+      default: ''
+    },
+    profileImage: { type: String, default: '' },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     tempPassword: { type: String, select: false },
     tempPasswordExpire: Date
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 userSchema.index({ companyId: 1, role: 1 });

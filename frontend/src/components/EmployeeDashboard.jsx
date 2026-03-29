@@ -30,7 +30,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
     category: 'Travel',
     expenseDate: new Date().toISOString().split('T')[0],
     paidBy: 'self',
-    currency: 'USD',
+    currency: 'INR',
     amount: '',
     remarks: '',
     receiptUrl: ''
@@ -51,7 +51,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
       const { data } = await expenseAPI.getMyExpenses();
       setExpenses(data.expenses);
     } catch (error) {
-      toast.error('Failed to load expenses');
+       // toast.error('Failed to load expenses');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
       category: val.category,
       expenseDate: new Date(val.expenseDate).toISOString().split('T')[0],
       paidBy: val.paidBy,
-      currency: val.currency || 'USD',
+      currency: val.currency || 'INR',
       amount: val.amount,
       remarks: val.remarks || '',
       receiptUrl: val.receiptUrl || ''
@@ -194,7 +194,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                  <Receipt size={24} className="text-primary-500" /> Expense History
+                  <Receipt size={24} className="text-primary-500" /> My Reimbursements
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage and track your reimbursement claims.</p>
               </div>
@@ -221,17 +221,6 @@ export default function EmployeeDashboard({ hideHistory = false }) {
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none transition-all"
                 />
               </div>
-              <select 
-                value={statusFilter} 
-                onChange={e => setStatusFilter(e.target.value)}
-                className="py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none"
-              >
-                <option value="all">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
             </div>
           </div>
 
@@ -273,7 +262,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
                           <p className="text-xs text-slate-500">{exp.category}</p>
                         </td>
                         <td className="py-4 px-5 text-sm font-bold text-slate-900 dark:text-white">
-                          {exp.currency} {exp.amount.toLocaleString()}
+                          INR {exp.amount.toLocaleString()}
                         </td>
                         <td className="py-4 px-5">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase ${getStatusColor(exp.status)}`}>
@@ -292,33 +281,6 @@ export default function EmployeeDashboard({ hideHistory = false }) {
 
       {/* ─── RIGHT: EXPENSE FORM (30% or Full) ─── */}
       <div className={`w-full ${hideHistory ? 'lg:w-full max-w-2xl mx-auto' : 'lg:w-[30%]'} space-y-4 lg:sticky lg:top-24`}>
-        
-        {/* Progress Flow visualization if editing */}
-        <AnimatePresence mode="wait">
-          {selectedExpense && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm overflow-hidden"
-            >
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider">Flow Context</h3>
-              <div className="space-y-4">
-                {STATUS_FLOW.map((step, idx) => {
-                  const isActive = idx === activeStatusIndex;
-                  return (
-                    <div key={step.id} className="flex gap-4 items-center">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
-                        ${idx <= activeStatusIndex ? 'bg-primary-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
-                        {idx + 1}
-                      </div>
-                      <p className={`text-sm ${isActive ? 'font-bold text-primary-500' : 'text-slate-500'}`}>{step.label}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
           <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="font-bold text-lg text-slate-900 dark:text-white">
@@ -332,7 +294,6 @@ export default function EmployeeDashboard({ hideHistory = false }) {
           <div className="p-5">
             <form id="expenseForm" onSubmit={(e) => handleSubmit(e, 'pending')} className="space-y-4">
               
-              {/* Receipt Upload UI */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Receipt</label>
                 {!isReadOnly ? (
@@ -366,7 +327,7 @@ export default function EmployeeDashboard({ hideHistory = false }) {
                     name="category" value={formData.category} onChange={handleFormChange} disabled={isReadOnly}
                     className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none"
                   >
-                    <option>Travel</option><option>Meals</option><option>Supplies</option><option>Other</option>
+                    <option>Travel</option><option>Meals</option><option>Supplies</option><option>Marketing</option><option>Other</option>
                   </select>
                 </div>
                 <div>
@@ -394,13 +355,13 @@ export default function EmployeeDashboard({ hideHistory = false }) {
           <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex gap-3">
              {(!selectedExpense || selectedExpense.status === 'draft') ? (
                <>
-                 <button onClick={(e) => handleSubmit(e, 'draft')} disabled={isSubmitting} className="flex-1 py-2 rounded-xl font-bold bg-slate-100 text-slate-600">Draft</button>
-                 <button type="submit" form="expenseForm" disabled={isSubmitting} className="flex-2 py-2 px-4 rounded-xl font-bold bg-primary-600 text-white">
-                   {isSubmitting ? '...' : 'Submit'}
+                 <button onClick={(e) => handleSubmit(e, 'draft')} disabled={isSubmitting} className="flex-1 py-2 rounded-xl font-bold bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200">Draft</button>
+                 <button type="submit" form="expenseForm" disabled={isSubmitting} className="flex-2 py-2 px-4 rounded-xl font-bold bg-primary-600 text-white shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all">
+                    Submit
                  </button>
                </>
              ) : (
-               <div className="w-full text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Read Only</div>
+               <div className="w-full text-center text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-950/20 py-2 rounded-lg border border-slate-100 dark:border-slate-800">Locked for Review</div>
              )}
           </div>
         </div>

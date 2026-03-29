@@ -1,5 +1,6 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
+const Company = require('../models/Company');
 const ApprovalRule = require('../models/ApprovalRule');
 const socketUtil = require('../utils/socketUtil');
 

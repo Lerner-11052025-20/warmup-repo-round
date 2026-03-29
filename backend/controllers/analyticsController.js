@@ -103,8 +103,8 @@ exports.getCharts = async (req, res, next) => {
     let matchQuery = { companyId: companyIdObj };
     if (role === 'employee') matchQuery.userId = new mongoose.Types.ObjectId(userId);
     if (role === 'manager') {
-       const team = await User.find({ managerId: userId }).select('_id');
-       matchQuery.userId = { $in: team.map(u => u._id) };
+      const team = await User.find({ managerId: userId }).select('_id');
+      matchQuery.userId = { $in: team.map(u => u._id) };
     }
 
     // ─── 1. Category Breakdown (Pie) ───
@@ -117,40 +117,45 @@ exports.getCharts = async (req, res, next) => {
     // ─── 2. Monthly Trend (Line/Area) ───
     const trendData = await Expense.aggregate([
       { $match: { ...matchQuery, status: { $ne: 'draft' } } },
-      { $group: { 
-        _id: { $dateToString: { format: '%Y-%m', date: '$expenseDate' } }, 
-        amount: { $sum: '$amount' } 
-      } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$expenseDate' } },
+          amount: { $sum: '$amount' }
+        }
+      },
       { $sort: { _id: 1 } },
       { $project: { name: '$_id', amount: 1, _id: 0 } }
     ]);
 
-    // Role-specific additional charts
     let extraCharts = {};
 
-    if (role === 'admin' || role === 'manager') {
-       // ─── 3. Approval Stats (Bar) ───
-       const statusData = await Expense.aggregate([
-         { $match: matchQuery },
-         { $group: { _id: '$status', count: { $sum: 1 } } },
-         { $project: { name: '$_id', count: 1, _id: 0 } }
-       ]);
-       extraCharts.statusData = statusData;
-    }
+    // ─── 3. Submission Status (All Roles) ───
+    const statusData = await Expense.aggregate([
+      { $match: matchQuery },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $project: { name: '$_id', count: 1, _id: 0 } }
+    ]);
+    extraCharts.statusData = statusData;
+
+    // ─── 4. Daily Activity (All Roles) ───
+    const dailyData = await Expense.aggregate([
+      { $match: { ...matchQuery, createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } },
+      { $group: { _id: { $dateToString: { format: '%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+      { $project: { name: '$_id', count: 1, _id: 0 } }
+    ]);
+    extraCharts.dailyData = dailyData;
+
+    // ─── 5. Payment Method Breakdown (New) ───
+    const paymentData = await Expense.aggregate([
+      { $match: { ...matchQuery, status: { $ne: 'draft' } } },
+      { $group: { _id: '$paidBy', value: { $sum: '$amount' } } },
+      { $project: { name: '$_id', value: 1, _id: 0 } }
+    ]);
+    extraCharts.paymentData = paymentData;
 
     if (role === 'admin') {
-      // ─── 4. Department Spend ───
-      // Simulating departments by categories if dept field not in User model
-      extraCharts.departmentData = categoryData.slice(0, 5); 
-      
-      // ─── 5. Daily Activity ───
-      const dailyData = await Expense.aggregate([
-        { $match: { ...matchQuery, createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } },
-        { $group: { _id: { $dateToString: { format: '%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-        { $project: { name: '$_id', count: 1, _id: 0 } }
-      ]);
-      extraCharts.dailyData = dailyData;
+      extraCharts.departmentData = categoryData.slice(0, 5);
     }
 
     res.status(200).json({

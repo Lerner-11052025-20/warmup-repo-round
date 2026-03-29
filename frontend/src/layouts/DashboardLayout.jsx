@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 import {
   Sparkles, LogOut, LayoutDashboard, Users, Receipt, Settings,
-  ChevronLeft, Menu, Bell, History, TrendingUp
+  ChevronLeft, Menu, Bell, History, TrendingUp, User
 } from 'lucide-react'
 
 const sidebarItems = {
@@ -15,18 +15,21 @@ const sidebarItems = {
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'rules', label: 'Approval Rules', icon: Settings },
     { id: 'approvals', label: 'Pending Approvals', icon: Receipt },
-    { id: 'history', label: 'Expense History', icon: History }
+    { id: 'history', label: 'Expense History', icon: History },
+    { id: 'profile', label: 'Profile Settings', icon: User }
   ],
   manager: [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'approvals', label: 'Pending Approvals', icon: Receipt },
-    { id: 'history', label: 'Team History', icon: History }
+    { id: 'history', label: 'Team History', icon: History },
+    { id: 'profile', label: 'Profile Settings', icon: User }
   ],
   employee: [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'history', label: 'My History', icon: History }
+    { id: 'history', label: 'My History', icon: History },
+    { id: 'profile', label: 'Profile Settings', icon: User }
   ]
 }
 

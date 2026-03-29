@@ -52,7 +52,10 @@ export default function DashboardPage() {
     // 2. Tab: Analytics (All Roles) - Now dedicated for graphs
     if (activeTab === 'analytics') return <AnalyticsDashboard role={user?.role} />
 
-    // 3. Tab: Dashboard (Role-specific Summary)
+    // 3. Tab: Profile
+    if (activeTab === 'profile') return <ProfilePage hideNavbar={true} />
+
+    // 4. Tab: Dashboard (Role-specific Summary)
     if (activeTab === 'dashboard') {
       return (
         <div className="space-y-10">

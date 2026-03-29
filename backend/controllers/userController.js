@@ -103,3 +103,57 @@ exports.getManagers = async (req, res, next) => {
     next(error);
   }
 };
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+// @access  Private
+exports.getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select('-password -tempPassword -resetPasswordToken')
+      .populate('companyId', 'name')
+      .populate('managerId', 'name email');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, bio } = req.body;
+    let updateData = { name, phone, bio };
+
+    // If file uploaded, update image URL
+    if (req.file) {
+      updateData.profileImage = req.file.path || req.file.secure_url;
+    }
+
+    // Filter out undefined fields
+    Object.keys(updateData).forEach(key => 
+      (updateData[key] === undefined || updateData[key] === '') && delete updateData[key]
+    );
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password -tempPassword -resetPasswordToken')
+     .populate('companyId', 'name');
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user
+    });
+  } catch (error) {
+    next(error);
+  }
+};

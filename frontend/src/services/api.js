@@ -43,7 +43,19 @@ export const authAPI = {
 export const userAPI = {
   createUser: (data) => API.post('/users', data),
   getUsers: () => API.get('/users'),
-  getManagers: () => API.get('/users/managers')
+  getManagers: () => API.get('/users/managers'),
+  getProfile: () => API.get('/users/profile'),
+  updateProfile: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
+    return API.put('/users/profile', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
 };
 
 // Expense API calls
