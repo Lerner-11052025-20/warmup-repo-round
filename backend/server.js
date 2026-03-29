@@ -67,6 +67,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
 const approvalRuleRoutes = require('./routes/approvalRuleRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -75,6 +76,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/approval-rules', approvalRuleRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {

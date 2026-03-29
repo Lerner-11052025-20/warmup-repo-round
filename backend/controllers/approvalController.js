@@ -1,5 +1,6 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
+const socketUtil = require('../utils/socket');
 
 // @desc    Get pending approvals for the current manager/admin
 // @route   GET /api/approvals/pending
@@ -176,12 +177,12 @@ exports.actionApproval = async (req, res, next) => {
 
     await expense.save();
 
-    const socketUtil = require('../utils/socket');
     socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
       expenseId: expense._id,
       status: expense.status,
       updatedData: expense
     });
+    socketUtil.emitToCompany(req.user.companyId, 'analytics_update', { action: 'approval' });
 
     res.status(200).json({
       success: true,

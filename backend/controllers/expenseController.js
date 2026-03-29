@@ -1,4 +1,5 @@
 const Expense = require('../models/Expense');
+const socketUtil = require('../utils/socket');
 
 // @desc    Create new expense
 // @route   POST /api/expenses
@@ -98,12 +99,12 @@ exports.createExpense = async (req, res, next) => {
       specificApproverId
     });
 
-    const socketUtil = require('../utils/socket');
     socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
       expenseId: expense._id,
       status: finalStatus,
       updatedData: expense
     });
+    socketUtil.emitToCompany(req.user.companyId, 'analytics_update', { role: req.user.role });
 
     res.status(201).json({ success: true, expense });
   } catch (error) {

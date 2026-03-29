@@ -79,4 +79,11 @@ export const approvalRuleAPI = {
   deleteRule: (id) => API.delete(`/approval-rules/${id}`)
 };
 
+// Analytics API
+export const analyticsAPI = {
+  getEmployeeAnalytics: () => API.get('/analytics/employee'),
+  getManagerAnalytics: () => API.get('/analytics/manager'),
+  getAdminAnalytics: () => API.get('/analytics/admin')
+};
+
 export default API;
