@@ -5,7 +5,7 @@ import CustomChartTooltip from './CustomChartTooltip';
 const LineExpenseChart = ({ data, baseCurrency, currencySymbol, dataKey = "amount", yAxisLabel = `Amount (${baseCurrency})` }) => {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 20, right: 20, left: 60, bottom: 30 }}>
         <defs>
           <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
@@ -19,15 +19,16 @@ const LineExpenseChart = ({ data, baseCurrency, currencySymbol, dataKey = "amoun
           fontSize={10} 
           axisLine={false} 
           tickLine={false} 
-          label={{ value: 'Timeline', position: 'insideBottomRight', offset: -10, fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
+          label={{ value: 'Timeline', position: 'insideBottom', offset: -10, fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
         />
         <YAxis 
           stroke="#94a3b8" 
           fontSize={10} 
+          width={60}
           axisLine={false} 
           tickLine={false} 
           tickFormatter={(v) => dataKey === 'amount' ? `${currencySymbol}${v}` : v}
-          label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
+          label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 'bold', fill: '#94a3b8', offset: -45 }}
         />
         <Tooltip content={<CustomChartTooltip baseCurrency={baseCurrency} currencySymbol={currencySymbol} />} />
         <Area 

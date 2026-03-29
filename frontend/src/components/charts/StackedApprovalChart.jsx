@@ -5,7 +5,7 @@ import CustomChartTooltip from './CustomChartTooltip';
 const StackedApprovalChart = ({ data, baseCurrency, currencySymbol }) => {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <BarChart data={data} margin={{ top: 20, right: 20, left: 60, bottom: 30 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.08} />
         <XAxis 
           dataKey="name" 
@@ -13,15 +13,16 @@ const StackedApprovalChart = ({ data, baseCurrency, currencySymbol }) => {
           fontSize={10} 
           axisLine={false} 
           tickLine={false}
-          label={{ value: 'Timeline', position: 'insideBottomRight', offset: -10, fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
+          label={{ value: 'Timeline', position: 'insideBottom', offset: -10, fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
         />
         <YAxis 
           stroke="#94a3b8" 
           fontSize={10} 
+          width={60}
           axisLine={false} 
           tickLine={false} 
           tickFormatter={(v) => `${currencySymbol}${v}`}
-          label={{ value: `Amount (${baseCurrency})`, angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
+          label={{ value: `Amount (${baseCurrency})`, angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 'bold', fill: '#94a3b8', offset: -45 }}
         />
         <Tooltip content={<CustomChartTooltip baseCurrency={baseCurrency} currencySymbol={currencySymbol} />} />
         <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }} />

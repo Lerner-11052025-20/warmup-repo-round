@@ -40,14 +40,17 @@ export default function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         
-        {/* LOGO */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-primary-500/20 group-hover:scale-110 transition-transform">
-            <PieChart size={18} className="text-white" />
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-xl shadow-slate-200/50 dark:shadow-none transition-all group-hover:scale-110 overflow-hidden border border-slate-100 dark:border-slate-800">
+            <img 
+              src="/favicon.png" 
+              alt="SmartFlow Logo" 
+              className="w-full h-full object-contain p-1.5"
+            />
           </div>
           <div>
-            <span className="text-lg font-bold text-slate-900 dark:text-white transition-colors group-hover:text-primary-600">SmartFlow</span>
-            <p className="text-[10px] text-slate-400 font-bold leading-none">Reimburse AI</p>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white transition-all group-hover:text-primary-600 leading-none">SmartFlow</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Reimburse AI</p>
           </div>
         </Link>
 
