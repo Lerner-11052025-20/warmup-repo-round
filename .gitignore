@@ -1,0 +1,29 @@
+# ─── Dependencies ───
+node_modules/
+
+# ─── Environment Variables ───
+.env
+.env.local
+.env.production
+
+# ─── Build Output ───
+dist/
+build/
+
+# ─── Logs ───
+*.log
+npm-debug.log*
+
+# ─── OS Files ───
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDE / Editor ───
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Resolved artifact files ───
+*.resolved
