@@ -140,18 +140,20 @@ export default function SignupPage() {
         {/* Country Selector */}
         <div className="relative">
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Country</label>
-          <button
-            type="button"
-            onClick={() => setShowDropdown(!showDropdown)}
-            className={`w-full pl-11 pr-4 py-3 rounded-xl border text-left text-sm transition-all duration-200 ${
-              form.country
-                ? 'border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-950/30 text-slate-900 dark:text-white'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-400 dark:text-slate-500'
-            } input-glow focus:border-primary-500`}
-          >
-            <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            {form.country || 'Select your country'}
-          </button>
+          <div className="relative">
+            <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none z-10" />
+            <button
+              type="button"
+              onClick={() => setShowDropdown(!showDropdown)}
+              className={`w-full pl-11 pr-4 py-3 rounded-xl border text-left text-sm transition-all duration-200 ${
+                form.country
+                  ? 'border-primary-300 dark:border-primary-700 bg-primary-50/50 dark:bg-primary-950/30 text-slate-900 dark:text-white'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-400 dark:text-slate-500'
+              } input-glow focus:border-primary-500`}
+            >
+              {form.country || 'Select your country'}
+            </button>
+          </div>
           {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
 
           {/* Currency Preview */}
