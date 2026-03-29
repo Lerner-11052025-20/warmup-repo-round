@@ -14,6 +14,7 @@ const sidebarItems = {
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'rules', label: 'Approval Rules', icon: Settings },
+    { id: 'approvals', label: 'Pending Approvals', icon: Receipt },
     { id: 'history', label: 'Expense History', icon: History }
   ],
   manager: [

@@ -1,33 +1,5 @@
 const mongoose = require('mongoose');
 
-const approvalStepSchema = new mongoose.Schema({
-  approverId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  step: {
-    type: Number,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  isRequired: {
-    type: Boolean,
-    default: true
-  },
-  comment: {
-    type: String,
-    default: ''
-  },
-  actedAt: {
-    type: Date
-  }
-});
-
 const expenseSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -46,7 +18,7 @@ const expenseSchema = new mongoose.Schema({
   currency: {
     type: String,
     required: true,
-    default: 'USD'
+    default: 'INR'
   },
   category: {
     type: String,
@@ -72,36 +44,23 @@ const expenseSchema = new mongoose.Schema({
      type: String
   },
 
-  // ─── NEW APPROVAL ENGINE FIELDS ───
-  approvalFlow: [approvalStepSchema],
-  
-  currentStep: {
-    type: Number,
-    default: 0 // Index of the current step in the approvalFlow array
-  },
+  // ─── SIMPLE APPROVAL FIELDS ───
   currentApproverId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
-  currentApproverIds: [{ // For parallel/percentage rules
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-
-  approvalType: {
-    type: String,
-    enum: ['sequential', 'parallel', 'hybrid'],
-    default: 'sequential'
-  },
-  minApprovalPercentage: {
-    type: Number,
-    default: 100
-  },
-  specificApproverId: { // VIP/CFO Approver for override logic
+  approvedById: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  approverComment: {
+    type: String,
+    default: ''
+  },
+  actedAt: {
+    type: Date
   }
 }, {
   timestamps: true

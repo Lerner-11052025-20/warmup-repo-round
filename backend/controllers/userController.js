@@ -47,7 +47,7 @@ exports.createUser = async (req, res, next) => {
       password,
       role,
       companyId: req.user.companyId,
-      managerId: role === 'employee' ? managerId : null,
+      managerId: managerId || null,
       isManagerApprover: role === 'manager'
     });
 

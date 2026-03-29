@@ -66,7 +66,7 @@ export default function ManagerDashboard() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Active Approvals Queue</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Review and action pending reimbursement requests across your team.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Review and action pending reimbursement requests.</p>
           </div>
         </div>
         <div className="hidden md:flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
@@ -123,67 +123,44 @@ export default function ManagerDashboard() {
 
                 {expandedId === exp._id && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/20 p-6">
-                    <div className="flex flex-col lg:flex-row gap-8">
-                       <div className="flex-1 space-y-5">
-                          <div>
-                            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><FileText size={12}/> Request Details</h4>
-                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-sm">
-                               <div className="grid grid-cols-2 gap-y-3">
-                                  <div><p className="text-[10px] text-slate-400 font-bold uppercase">Date submitted</p><p className="font-semibold">{new Date(exp.createdAt).toLocaleDateString()}</p></div>
-                                  <div><p className="text-[10px] text-slate-400 font-bold uppercase">Currency</p><p className="font-semibold">{exp.currency || 'INR'}</p></div>
-                               </div>
-                               <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800">
-                                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">"{exp.description}"</p>
-                               </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><MessageSquare size={12}/> Approval Decision / Review</h4>
-                             <textarea 
-                               placeholder="Add a reason for your decision..."
-                               value={comment} onChange={e => setComment(e.target.value)}
-                               className="w-full h-24 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-primary-500/50"
-                             />
-                             <div className="flex gap-3 pt-2">
-                                <button 
-                                  onClick={() => handleAction(exp._id, 'reject')} disabled={actioningId}
-                                  className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-red-500 font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50"
-                                >
-                                  <XCircle size={18} /> Reject Claim
-                                </button>
-                                <button 
-                                  onClick={() => handleAction(exp._id, 'approve')} disabled={actioningId}
-                                  className="flex-2 py-3 px-8 rounded-xl bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600"
-                                >
-                                  <CheckCircle2 size={18} /> Approve Claim
-                                </button>
+                    <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div>
+                             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><FileText size={12}/> Request Details</h4>
+                             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-sm">
+                                <div className="grid grid-cols-2 gap-y-3">
+                                   <div><p className="text-[10px] text-slate-400 font-bold uppercase">Date submitted</p><p className="font-semibold">{new Date(exp.createdAt).toLocaleDateString()}</p></div>
+                                   <div><p className="text-[10px] text-slate-400 font-bold uppercase">Requester ID</p><p className="font-semibold truncate">#{exp.userId?._id?.toString().slice(-6)}</p></div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+                                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">"{exp.description}"</p>
+                                </div>
                              </div>
-                          </div>
-                       </div>
+                           </div>
 
-                       <div className="lg:w-72 border-l border-slate-100 dark:border-slate-800 pl-8 hidden lg:block">
-                          <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><History size={12}/> Approval Workflow</h4>
-                          <div className="space-y-4 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">
-                             {exp.approvalFlow?.map((step, idx) => (
-                               <div key={idx} className="relative pl-8">
-                                  <div className={`absolute left-0 top-1.5 w-6 h-6 rounded-full border-4 border-white dark:border-slate-900 flex items-center justify-center
-                                    ${step.status === 'approved' ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                                     {step.status === 'approved' && <CheckCircle2 size={10} className="text-white"/>}
-                                  </div>
-                                  <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tighter">Step {step.step}</p>
-                                  <p className="text-[10px] text-slate-400 font-bold">{step.approverId?.name || 'Assigned Officer'}</p>
-                                  <span className={`text-[9px] font-black ${step.status === 'approved' ? 'text-emerald-500' : 'text-slate-400'}`}>{step.status}</span>
-                               </div>
-                             ))}
-                          </div>
-                          <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/20">
-                             <p className="text-[10px] text-amber-600 dark:text-amber-500 font-black uppercase mb-1">Pass Criteria</p>
-                             <p className="text-[11px] font-medium italic text-slate-600 dark:text-slate-400">
-                                {exp.approvalType === 'sequential' ? 'Sequential pass through all officers.' : `Min. approval rating of ${exp.minApprovalPercentage}% required.`}
-                             </p>
-                          </div>
-                       </div>
+                           <div className="space-y-3">
+                              <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><MessageSquare size={12}/> Decision / Comments</h4>
+                              <textarea 
+                                placeholder="Add a reason for your decision..."
+                                value={comment} onChange={e => setComment(e.target.value)}
+                                className="w-full h-24 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-primary-500/50"
+                              />
+                              <div className="flex gap-3 pt-1">
+                                 <button 
+                                   onClick={() => handleAction(exp._id, 'reject')} disabled={actioningId}
+                                   className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-red-500 font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+                                 >
+                                   <XCircle size={18} /> Reject
+                                 </button>
+                                 <button 
+                                   onClick={() => handleAction(exp._id, 'approve')} disabled={actioningId}
+                                   className="flex-2 py-3 px-8 rounded-xl bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 hover:bg-emerald-600 transition-all"
+                                 >
+                                   <CheckCircle2 size={18} /> Approve
+                                 </button>
+                              </div>
+                           </div>
+                        </div>
                     </div>
                   </motion.div>
                 )}

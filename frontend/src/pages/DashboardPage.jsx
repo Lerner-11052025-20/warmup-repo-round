@@ -57,7 +57,7 @@ export default function DashboardPage() {
       return (
         <div className="space-y-10">
           <RoleDashboardSummary role={user?.role} />
-          {user?.role === 'employee' && (
+          {['employee', 'manager'].includes(user?.role) && (
             <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-10">
                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Create New Reimbursement</h3>
                <EmployeeDashboard hideHistory={true} /> 
@@ -71,6 +71,7 @@ export default function DashboardPage() {
     if (user?.role === 'admin') {
       if (activeTab === 'users') return renderUserManagement()
       if (activeTab === 'rules') return <AdminApprovalRules />
+      if (activeTab === 'approvals') return <ManagerDashboard />
     }
     
     // 5. Manager Specific Tabs

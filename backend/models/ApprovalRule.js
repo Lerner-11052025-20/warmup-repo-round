@@ -7,7 +7,7 @@ const approvalRuleSchema = new mongoose.Schema(
       ref: 'Company',
       required: true
     },
-    ruleName: { // Added for easier identification
+    ruleName: { 
       type: String,
       required: true,
       trim: true
@@ -16,48 +16,24 @@ const approvalRuleSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
-    isActive: { // Added for switching rules on/off
+    isActive: { 
       type: Boolean,
       default: true
     },
     
     // ─── TARGETING LOGIC ───
-    targetEmployeeIds: [{ // Supporting multiple specific employees
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    targetCategory: { // 'Travel', 'Meals', etc. or 'all'
+    targetCategory: { 
       type: String,
       default: 'all'
     },
 
-    // ─── APPROVER CONFIG ───
+    // ─── DIRECT APPROVER CONFIG ───
     isManagerApprover: {
       type: Boolean,
       default: true
     },
-    approvers: [
-      {
-        approverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        step: Number,
-        isRequired: { type: Boolean, default: true }
-      }
-    ],
-
-    // ─── LOGIC CONFIG ───
-    approvalType: { // 'sequential' | 'parallel' | 'hybrid'
-      type: String,
-      enum: ['sequential', 'parallel', 'hybrid'],
-      default: 'sequential'
-    },
-    minApprovalPercentage: {
-      type: Number,
-      default: 100, // Default to 100% for parallel/hybrid
-      min: 0,
-      max: 100
-    },
-    specificApproverId: { // CFO Override
-      type: mongoose.Schema.Types.ObjectId,
+    approverId: { 
+      type: mongoose.Schema.Types.ObjectId, 
       ref: 'User',
       default: null
     }

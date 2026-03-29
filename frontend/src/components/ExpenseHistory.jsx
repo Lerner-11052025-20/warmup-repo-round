@@ -36,7 +36,7 @@ const ExpenseHistory = ({ user }) => {
         setExpenses(res.data.expenses);
       }
     } catch (error) {
-      toast.error('Failed to load history');
+       // toast.error('Failed to load history');
       console.error(error);
     } finally {
       setLoading(false);
@@ -58,19 +58,7 @@ const ExpenseHistory = ({ user }) => {
     });
 
     newSocket.on('expense_updated', (data) => {
-      if (data.newExpense) {
-        // If it's a new expense and applicable to current role view
-        const isApplicable = (user.role === 'admin') || 
-                            (user.role === 'employee' && data.updatedData.userId?._id === user._id);
-        
-        // Use user.role check to satisfy requirement "FOR MANAGERSS SIDEBAR: HISTORY NO REAL TIME DISPLACEMENT"
-        if (isApplicable) {
-          setExpenses(prev => [data.updatedData, ...prev]);
-        }
-      } else {
-        setExpenses(prev => prev.map(e => e._id === data.expenseId ? { ...e, ...data.updatedData } : e));
-      }
-      toast.success('History update synced');
+      fetchHistory();
     });
 
     setSocket(newSocket);
@@ -143,16 +131,6 @@ const ExpenseHistory = ({ user }) => {
               <option value="rejected">Rejected</option>
               <option value="draft">Draft</option>
             </select>
-
-            <select 
-              className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm py-2 px-3 focus:ring-2 focus:ring-indigo-500 capitalize"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              {categories.map(c => (
-                <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -174,7 +152,6 @@ const ExpenseHistory = ({ user }) => {
                 <Info size={40} className="text-slate-400" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">No expenses found</h3>
-              <p className="text-sm text-slate-500 max-w-xs">Adjust your filters or submit a new expense to see it here.</p>
             </motion.div>
           ) : (
             filteredExpenses.map((expense) => {
@@ -219,7 +196,7 @@ const ExpenseHistory = ({ user }) => {
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-sm font-black text-slate-900 dark:text-white">
-                          {expense.currency} {expense.amount.toLocaleString()}
+                          ₹{expense.amount.toLocaleString()}
                         </p>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">TOTAL CLAIM</p>
                       </div>
@@ -229,7 +206,7 @@ const ExpenseHistory = ({ user }) => {
                     </div>
                   </div>
 
-                  {/* Expanded Timeline */}
+                  {/* Expanded Summary */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -244,7 +221,7 @@ const ExpenseHistory = ({ user }) => {
                             <div className="flex-1 space-y-4">
                               <div>
                                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                  <FileText size={12} /> Transaction Details
+                                  <FileText size={12} /> Details & Remaks
                                 </h4>
                                 <p className="text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm leading-relaxed">
                                   {expense.description}
@@ -253,69 +230,38 @@ const ExpenseHistory = ({ user }) => {
                               </div>
                               {expense.receiptUrl && (
                                 <a 
-                                  href={expense.receiptUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
+                                  href={expense.receiptUrl} target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline"
                                 >
-                                  <Download size={14} /> View / Download Receipt Proof
+                                  <Download size={14} /> View Receipt Proof
                                 </a>
                               )}
                             </div>
 
-                            {/* Approval Timeline */}
+                            {/* Status Summary */}
                             <div className="md:w-72">
                               <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <Clock size={12} /> Approval Lifecycle
+                                <Clock size={12} /> Approval Status
                               </h4>
-                              <div className="space-y-4 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                                {/* Submission Step */}
-                                <div className="relative pl-8">
-                                  <div className="absolute left-0 top-1.5 w-[24px] h-[24px] rounded-full bg-emerald-500 border-4 border-white dark:border-slate-900 flex items-center justify-center text-white scale-75" />
-                                  <p className="text-xs font-bold text-slate-900 dark:text-white">Expense Submitted</p>
-                                  <p className="text-[10px] text-slate-400">{new Date(expense.createdAt).toLocaleString()}</p>
-                                </div>
-
-                                {/* Flow Steps */}
-                                {expense.approvalFlow?.map((step, idx) => {
-                                  let stepStatus = step.status;
-                                  const IconComp = stepStatus === 'approved' ? CheckCircle2 : stepStatus === 'rejected' ? XCircle : Clock;
-                                  const iconColor = stepStatus === 'approved' ? 'text-emerald-500' : stepStatus === 'rejected' ? 'text-rose-500' : 'text-amber-500';
-                                  const bgColor = stepStatus === 'approved' ? 'bg-emerald-500' : stepStatus === 'rejected' ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700';
-
-                                  return (
-                                    <div key={idx} className="relative pl-8">
-                                      <div className={`absolute left-0 top-1.5 w-[24px] h-[24px] rounded-full ${bgColor} border-4 border-white dark:border-slate-900 flex items-center justify-center text-white scale-75 shadow-sm`} />
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-slate-900 dark:text-white">Step {step.step}: Approver</p>
-                                        <span className={`text-[9px] font-black uppercase tracking-tighter ${iconColor}`}>{step.status}</span>
-                                      </div>
-                                      <p className="text-[10px] text-slate-500 font-medium">
-                                        {step.approverId?.name || 'Assigned Officer'}
-                                      </p>
-                                      {step.comment && (
-                                        <p className="text-[10px] mt-1 italic text-slate-400 bg-white dark:bg-slate-800 px-2 py-1 rounded inline-block">
-                                          "{step.comment}"
-                                        </p>
-                                      )}
-                                      {step.actedAt && (
-                                        <p className="text-[9px] text-slate-400 mt-0.5">{new Date(step.actedAt).toLocaleTimeString()}</p>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-
-                                {/* Final Status */}
-                                {expense.status !== 'pending' && (
-                                  <div className="relative pl-8 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    <div className={`absolute left-0 top-5.5 w-[24px] h-[24px] rounded-full ${expense.status === 'approved' ? 'bg-emerald-600' : 'bg-rose-600'} border-4 border-white dark:border-slate-900 flex items-center justify-center text-white scale-90 shadow-lg`} />
-                                    <p className="text-xs font-black uppercase text-slate-900 dark:text-white flex items-center gap-2">
-                                      {expense.status === 'approved' ? 'PASS COMPLETED' : 'CLAIM REJECTED'}
-                                      <ArrowRight size={10} />
+                              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+                                 <div>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Current / Last Action By</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                      {expense.status === 'pending' ? (expense.currentApproverId?.name || 'Assigning...') : (expense.approvedById?.name || 'System')}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 leading-tight">System finalized decision on {new Date(expense.updatedAt).toLocaleDateString()}</p>
-                                  </div>
-                                )}
+                                 </div>
+                                 {expense.approverComment && (
+                                   <div>
+                                      <p className="text-[10px] text-slate-400 font-bold uppercase">Approver Comment</p>
+                                      <p className="text-xs italic text-slate-600 dark:text-slate-400 mt-1">"{expense.approverComment}"</p>
+                                   </div>
+                                 )}
+                                 {expense.actedAt && (
+                                   <div className="pt-2 border-t border-slate-50 dark:border-slate-700">
+                                      <p className="text-[9px] text-slate-400 uppercase font-black">Finalized On</p>
+                                      <p className="text-[10px] font-medium">{new Date(expense.actedAt).toLocaleString()}</p>
+                                   </div>
+                                 )}
                               </div>
                             </div>
                           </div>
