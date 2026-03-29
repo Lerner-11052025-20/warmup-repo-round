@@ -10,6 +10,7 @@ import AdminApprovalRules from '../components/AdminApprovalRules'
 import ExpenseHistory from '../components/ExpenseHistory'
 import AnalyticsDashboard from '../components/AnalyticsDashboard'
 import RoleDashboardSummary from '../components/RoleDashboardSummary'
+import ProfilePage from './ProfilePage'
 import {
   Users, UserPlus, Shield, User, Receipt, TrendingUp,
   Mail, Calendar, MoreVertical, History, LayoutDashboard
