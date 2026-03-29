@@ -3,7 +3,7 @@ const ApprovalRule = require('../models/ApprovalRule');
 exports.getApprovalRules = async (req, res, next) => {
   try {
     const rules = await ApprovalRule.find({ companyId: req.user.companyId })
-      .populate('userId', 'name email role')
+      .populate('targetEmployeeIds', 'name email role')
       .populate('approvers.approverId', 'name role email')
       .populate('specificApproverId', 'name role')
       .sort({ createdAt: -1 });
@@ -18,17 +18,13 @@ exports.createApprovalRule = async (req, res, next) => {
   try {
     const ruleData = { ...req.body, companyId: req.user.companyId };
     
-    // Check if rule for user exists, replace it
-    if (ruleData.userId) {
-      const existing = await ApprovalRule.findOne({ companyId: req.user.companyId, userId: ruleData.userId });
-      if (existing) {
-        return res.status(400).json({ message: 'A rule already exists for this user. Please update it instead.' });
-      }
-    }
-
+    // Validate targeting logic if needed
+    // In new schema, we allow many rules, targeting logic takes care of priority
     const rule = await ApprovalRule.create(ruleData);
+    
     res.status(201).json({ success: true, rule });
   } catch (error) {
+    console.error('[ERROR] createApprovalRule:', error);
     next(error);
   }
 };
