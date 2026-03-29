@@ -58,19 +58,19 @@ const ExpenseHistory = ({ user }) => {
     });
 
     newSocket.on('expense_updated', (data) => {
-      setExpenses(prev => {
-        const index = prev.findIndex(e => e._id === data.expenseId);
-        if (index !== -1) {
-          const newExpenses = [...prev];
-          newExpenses[index] = { ...newExpenses[index], ...data.updatedData };
-          return newExpenses;
-        } else if (user.role !== 'manager' || data.updatedData.userId.managerId === user._id) {
-           // If it's a new one and applicable to current view, prepend it
-           return [data.updatedData, ...prev];
+      if (data.newExpense) {
+        // If it's a new expense and applicable to current role view
+        const isApplicable = (user.role === 'admin') || 
+                            (user.role === 'employee' && data.updatedData.userId?._id === user._id);
+        
+        // Use user.role check to satisfy requirement "FOR MANAGERSS SIDEBAR: HISTORY NO REAL TIME DISPLACEMENT"
+        if (isApplicable) {
+          setExpenses(prev => [data.updatedData, ...prev]);
         }
-        return prev;
-      });
-      toast.success('Real-time update received');
+      } else {
+        setExpenses(prev => prev.map(e => e._id === data.expenseId ? { ...e, ...data.updatedData } : e));
+      }
+      toast.success('History update synced');
     });
 
     setSocket(newSocket);
@@ -293,8 +293,8 @@ const ExpenseHistory = ({ user }) => {
                                           "{step.comment}"
                                         </p>
                                       )}
-                                      {step.actionDate && (
-                                        <p className="text-[9px] text-slate-400 mt-0.5">{new Date(step.actionDate).toLocaleTimeString()}</p>
+                                      {step.actedAt && (
+                                        <p className="text-[9px] text-slate-400 mt-0.5">{new Date(step.actedAt).toLocaleTimeString()}</p>
                                       )}
                                     </div>
                                   );

@@ -81,9 +81,8 @@ export const approvalRuleAPI = {
 
 // Analytics API
 export const analyticsAPI = {
-  getEmployeeAnalytics: () => API.get('/analytics/employee'),
-  getManagerAnalytics: () => API.get('/analytics/manager'),
-  getAdminAnalytics: () => API.get('/analytics/admin')
+  getSummary: () => API.get('/analytics/summary'),
+  getCharts: () => API.get('/analytics/charts')
 };
 
 export default API;

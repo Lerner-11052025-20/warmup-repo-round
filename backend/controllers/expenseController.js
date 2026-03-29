@@ -1,170 +1,152 @@
 const Expense = require('../models/Expense');
-const socketUtil = require('../utils/socket');
+const User = require('../models/User');
+const ApprovalRule = require('../models/ApprovalRule');
+const socketUtil = require('../utils/socketUtil');
 
 // @desc    Create new expense
 // @route   POST /api/expenses
-// @access  Private (Employee mostly, though anyone logged in could technically create)
+// @access  Private (Employee)
 exports.createExpense = async (req, res, next) => {
   try {
-    const {
-      description, category, expenseDate, paidBy,
-      currency, amount, remarks, receiptUrl, status
+    const { 
+      description, amount, currency, category, expenseDate, 
+      paidBy, remarks, receiptUrl, status: inputStatus 
     } = req.body;
 
-    const User = require('../models/User');
-    const ApprovalRule = require('../models/ApprovalRule');
     const user = await User.findById(req.user._id);
 
-    // Build automated workflow
+    // Initial state
     let approvalFlow = [];
-    let currentApproverIds = [];
+    let currentStep = 0;
     let currentApproverId = null;
-    let finalStatus = status || 'draft';
-    let isSequential = true;
-    let minApprovalPercentage = 0;
+    let currentApproverIds = [];
+    let approvalType = 'sequential';
+    let minApprovalPercentage = 100;
     let specificApproverId = null;
+    
+    let finalStatus = inputStatus === 'draft' ? 'draft' : 'pending';
 
+    // ─── 1. DYNAMIC APPROVAL FLOW BUILDING ───
     if (finalStatus === 'pending') {
-      // 1. Try to find a custom rule for the user, otherwise find company default
-      let rule = await ApprovalRule.findOne({ companyId: req.user.companyId, userId: req.user._id });
-      if (!rule) {
-        rule = await ApprovalRule.findOne({ companyId: req.user.companyId, userId: null });
-      }
-
-      let stepCounter = 1;
+      const rule = await ApprovalRule.findOne({ 
+        companyId: user.companyId,
+        $or: [
+          { isActive: true, targetEmployeeIds: user._id },
+          { isActive: true, targetCategory: category },
+          { isActive: true, targetEmployeeIds: { $size: 0 }, targetCategory: { $in: [null, '', 'all'] } } // Default rule
+        ]
+      }).sort({ targetEmployeeIds: -1, targetCategory: -1 }); // Priority: Specific Employee > Specific Category > Default
 
       if (rule) {
-        isSequential = rule.isSequential;
-        minApprovalPercentage = rule.minApprovalPercentage || 0;
+        console.log(`[DEBUG] Rule Found: ${rule.ruleName} for ${user.name}`);
+        
+        approvalType = rule.approvalType || 'sequential';
+        minApprovalPercentage = rule.minApprovalPercentage || 100;
         specificApproverId = rule.specificApproverId || null;
 
-        // Auto-assign direct Manager first if toggled
+        let stepIndex = 0;
+
+        // Step A: Manager (if required by rule)
         if (rule.isManagerApprover && user.managerId) {
-          approvalFlow.push({ 
-            step: stepCounter++, 
-            approverId: user.managerId, 
-            status: 'pending', 
-            required: true 
+          approvalFlow.push({
+            approverId: user.managerId,
+            step: 1,
+            status: 'pending',
+            isRequired: true
           });
+          stepIndex++;
         }
 
-        // Add the custom approvers from the rule config
+        // Step B: Additional Approvers (Finance, Director, etc.)
         if (rule.approvers && rule.approvers.length > 0) {
           rule.approvers.forEach(app => {
             approvalFlow.push({
-              step: isSequential ? stepCounter++ : 1, // If not sequential, all share same relative step
               approverId: app.approverId,
+              step: approvalType === 'sequential' ? ++stepIndex : 1, // If sequential, increment. If parallel, all at step 1.
               status: 'pending',
-              required: app.required
+              isRequired: app.isRequired !== false
             });
           });
         }
-      } else {
-        // Fallback older hardcoded logic if NO RULES exist at all
-        if (user.managerId) {
-          approvalFlow.push({ step: stepCounter++, approverId: user.managerId, status: 'pending', required: true });
-        }
-        const companyAdmin = await User.findOne({ companyId: req.user.companyId, role: 'admin' }).select('_id');
-        if (companyAdmin && companyAdmin._id.toString() !== user.managerId?.toString()) {
-          approvalFlow.push({ step: stepCounter++, approverId: companyAdmin._id, status: 'pending', required: true });
-        }
       }
 
-      // Finalize the routing pointers based on sequential vs non-sequential logic
+      // ─── 2. Pointers initialization ───
       if (approvalFlow.length > 0) {
-        if (isSequential) {
-          currentApproverIds = [approvalFlow[0].approverId];
-          currentApproverId = approvalFlow[0].approverId; // legacy variable
+        if (approvalType === 'sequential') {
+          currentApproverId = approvalFlow[0].approverId;
+          currentApproverIds = [currentApproverId];
         } else {
-          // Send to ALL approvers simultaneously
-          currentApproverIds = approvalFlow.map(flow => flow.approverId);
-          currentApproverId = null; // No single direct step
+          // Parallel/Hybrid: Notify everyone at once or first batch
+          currentApproverIds = approvalFlow.map(f => f.approverId);
+          currentApproverId = null; // No single pointer
         }
       } else {
-        finalStatus = 'approved'; // Edge case: admin submits or missing workflow setup
+        // No rule found or no approvers? Auto-approve or fallback to Admin
+        finalStatus = 'approved';
       }
     }
 
     const expense = await Expense.create({
       userId: req.user._id,
       companyId: req.user.companyId,
-      description, category, expenseDate, paidBy,
-      currency, amount, remarks, receiptUrl,
+      description,
+      amount,
+      currency,
+      category,
+      expenseDate,
+      paidBy,
+      remarks,
+      receiptUrl,
       status: finalStatus,
       approvalFlow,
+      currentStep: 0,
       currentApproverId,
       currentApproverIds,
-      isSequential,
+      approvalType,
       minApprovalPercentage,
       specificApproverId
     });
 
-    socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
-      expenseId: expense._id,
-      status: finalStatus,
-      updatedData: expense
-    });
-    socketUtil.emitToCompany(req.user.companyId, 'analytics_update', { role: req.user.role });
+    console.log(`[DEBUG] Expense Created: ${expense._id} | Status: ${expense.status} | First Approver: ${expense.currentApproverId}`);
 
-    res.status(201).json({ success: true, expense });
+    const populatedExpense = await Expense.findById(expense._id)
+      .populate('userId', 'name role managerId')
+      .populate('approvalFlow.approverId', 'name');
+
+    // Emit event for real-time dashboards
+    socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
+      message: `New expense request from ${req.user.name}`,
+      expenseId: expense._id,
+      newExpense: true,
+      updatedData: populatedExpense
+    });
+
+    res.status(201).json({
+      success: true,
+      message: finalStatus === 'draft' ? 'Draft saved' : 'Expense submitted for approval',
+      expense
+    });
+
   } catch (error) {
+    console.error('[ERROR] Expense Creation:', error);
     next(error);
   }
 };
 
-// @desc    Get user's own expenses
+// @desc    Get user's expenses
 // @route   GET /api/expenses/my
-// @access  Private
+// @access  Private (Employee)
 exports.getMyExpenses = async (req, res, next) => {
   try {
     const expenses = await Expense.find({ userId: req.user._id })
-      .populate('userId', 'name email role avatar')
-      .sort({ createdAt: -1 });
+      .sort('-createdAt')
+      .populate('approvalFlow.approverId', 'name email');
 
-    res.status(200).json({ success: true, count: expenses.length, expenses });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get whole team expenses (for Managers)
-// @route   GET /api/expenses/team
-// @access  Private (Manager)
-exports.getTeamExpenses = async (req, res, next) => {
-  try {
-    // 1. First find all users where this person is the manager
-    const User = require('../models/User');
-    const teamEmployees = await User.find({ managerId: req.user._id }).select('_id');
-    const teamIds = teamEmployees.map(u => u._id);
-
-    // 2. Find expenses for these users
-    const expenses = await Expense.find({ 
-      userId: { $in: teamIds },
-      companyId: req.user.companyId 
-    })
-    .populate('userId', 'name email role avatar')
-    .sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, count: expenses.length, expenses });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get all company expenses (for Admins)
-// @route   GET /api/expenses/all
-// @access  Private (Admin)
-exports.getAllCompanyExpenses = async (req, res, next) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can view all history' });
-    }
-
-    const expenses = await Expense.find({ companyId: req.user.companyId })
-      .populate('userId', 'name email role avatar')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, count: expenses.length, expenses });
+    res.status(200).json({
+      success: true,
+      count: expenses.length,
+      expenses
+    });
   } catch (error) {
     next(error);
   }

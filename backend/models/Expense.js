@@ -1,86 +1,115 @@
 const mongoose = require('mongoose');
 
-const expenseSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    companyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
-      required: true
-    },
-    description: {
-      type: String,
-      required: [true, 'Description is required'],
-      trim: true
-    },
-    category: {
-      type: String,
-      required: [true, 'Category is required']
-    },
-    expenseDate: {
-      type: Date,
-      required: [true, 'Expense Date is required']
-    },
-    paidBy: {
-      type: String,
-      enum: ['self', 'company'],
-      default: 'self'
-    },
-    currency: {
-      type: String,
-      default: 'USD'
-    },
-    amount: {
-      type: Number,
-      required: [true, 'Amount is required'],
-      min: 0
-    },
-    remarks: {
-      type: String,
-      trim: true
-    },
-    status: {
-      type: String,
-      enum: ['draft', 'pending', 'approved', 'rejected'],
-      default: 'draft'
-    },
-    receiptUrl: {
-      type: String
-    },
-    currentApproverId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null
-    },
-    currentApproverIds: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    isSequential: { type: Boolean, default: true },
-    minApprovalPercentage: { type: Number, default: 0 },
-    specificApproverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    approvalFlow: [
-      {
-        step: Number,
-        approverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        required: { type: Boolean, default: true },
-        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-        comment: String,
-        actionDate: Date
-      }
-    ]
+const approvalStepSchema = new mongoose.Schema({
+  approverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  { timestamps: true }
-);
+  step: {
+    type: Number,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  isRequired: {
+    type: Boolean,
+    default: true
+  },
+  comment: {
+    type: String,
+    default: ''
+  },
+  actedAt: {
+    type: Date
+  }
+});
 
-// Indexes to speed up queries for a user, company, and filters
-expenseSchema.index({ userId: 1, createdAt: -1 });
+const expenseSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true
+  },
+  currency: {
+    type: String,
+    required: true,
+    default: 'USD'
+  },
+  category: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  expenseDate: {
+    type: Date,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['draft', 'pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  receiptUrl: {
+    type: String
+  },
+  remarks: {
+     type: String
+  },
+
+  // ─── NEW APPROVAL ENGINE FIELDS ───
+  approvalFlow: [approvalStepSchema],
+  
+  currentStep: {
+    type: Number,
+    default: 0 // Index of the current step in the approvalFlow array
+  },
+  currentApproverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  currentApproverIds: [{ // For parallel/percentage rules
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
+  approvalType: {
+    type: String,
+    enum: ['sequential', 'parallel', 'hybrid'],
+    default: 'sequential'
+  },
+  minApprovalPercentage: {
+    type: Number,
+    default: 100
+  },
+  specificApproverId: { // VIP/CFO Approver for override logic
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  }
+}, {
+  timestamps: true
+});
+
+// Indexes for performance
 expenseSchema.index({ companyId: 1, status: 1 });
-expenseSchema.index({ companyId: 1, category: 1 });
-expenseSchema.index({ companyId: 1, userId: 1 });
+expenseSchema.index({ currentApproverId: 1, status: 1 });
+expenseSchema.index({ userId: 1, status: 1 });
 
 module.exports = mongoose.model('Expense', expenseSchema);

@@ -1,195 +1,164 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
-const socketUtil = require('../utils/socket');
+const socketUtil = require('../utils/socketUtil');
+const mongoose = require('mongoose');
 
-// @desc    Get pending approvals for the current manager/admin
+// @desc    Get pending approvals for manager/admin
 // @route   GET /api/approvals/pending
 // @access  Private (Manager/Admin)
 exports.getPendingApprovals = async (req, res, next) => {
   try {
-    // Managers see what's assigned to them OR orphaned expenses. Admins see EVERYTHING pending.
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    // ─── CRITICAL VISIBILITY QUERY ───
     const query = {
       companyId: req.user.companyId,
       status: 'pending'
     };
 
     if (req.user.role !== 'admin') {
+      // Must be the assigned person or in the assigned list
       query.$or = [
-        { currentApproverId: req.user._id },
-        { currentApproverIds: req.user._id },
-        { currentApproverId: { $in: [null, undefined] }, currentApproverIds: { $exists: false } }, // legacy orphans
-        { currentApproverId: { $in: [null, undefined] }, currentApproverIds: { $size: 0 } } // new orphans
+        { currentApproverId: userId },
+        { currentApproverIds: { $in: [userId] } }
       ];
     }
 
     const expenses = await Expense.find(query)
-      .populate('userId', 'name email avatar role')
-      .populate('approvalFlow.approverId', 'name role')
-      .sort({ createdAt: -1 });
+      .populate('userId', 'name role')
+      .populate('approvalFlow.approverId', 'name')
+      .sort('-createdAt');
+
+    console.log(`[DEBUG] Pending approvals for user: ${userId} (${req.user.role}) | Found: ${expenses.length}`);
 
     res.status(200).json({
       success: true,
       count: expenses.length,
       expenses
     });
+
   } catch (error) {
+    console.error('[ERROR] Fetching Approvals:', error);
     next(error);
   }
 };
 
-// @desc    Approve or reject an expense
+// @desc    Approve or Reject an expense
 // @route   POST /api/approvals/action
 // @access  Private (Manager/Admin)
 exports.actionApproval = async (req, res, next) => {
   try {
     const { expenseId, action, comment } = req.body;
-
-    if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ message: 'Invalid action. Must be approve or reject' });
-    }
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
     const expense = await Expense.findById(expenseId);
+    if (!expense) return res.status(404).json({ message: 'Expense not found' });
 
-    if (!expense) {
-      return res.status(404).json({ message: 'Expense not found' });
+    // ─── 0. Admin Override ───
+    const isAdmin = req.user.role === 'admin';
+
+    // ─── 1. Identify User in Flow ───
+    // Find EVERY step this person is assigned to (could be same person in multi-steps)
+    const activeStepIndex = expense.approvalFlow.findIndex(
+      step => step.status === 'pending' && step.approverId.toString() === userId.toString()
+    );
+
+    if (activeStepIndex === -1 && !isAdmin) {
+      return res.status(403).json({ message: 'You are not an authorized approver for this request right now' });
     }
 
-    if (expense.status !== 'pending') {
-      return res.status(400).json({ message: 'Expense is no longer pending' });
-    }
+    const targetStepIndex = activeStepIndex === -1 && isAdmin 
+      ? expense.approvalFlow.findIndex(s => s.status === 'pending') // Admin picks first pending step
+      : activeStepIndex;
 
-    // Security Check
-    const isDirectMatch = expense.currentApproverId && expense.currentApproverId.toString() === req.user._id.toString();
-    const isArrayMatch = expense.currentApproverIds && expense.currentApproverIds.some(id => id.toString() === req.user._id.toString());
-    const isLegacyOrphan = (!expense.currentApproverId && (!expense.currentApproverIds || expense.currentApproverIds.length === 0));
-
-    if (!isDirectMatch && !isArrayMatch && !isLegacyOrphan && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to approve this expense at this step' });
-    }
-
-    // Find current step index if this is a structured workflow
-    let currentStepIndex = -1;
-    if (expense.approvalFlow && expense.approvalFlow.length > 0) {
-      if (expense.isSequential !== false) {
-        currentStepIndex = expense.approvalFlow.findIndex(
-          flow => flow.status === 'pending' && (flow.approverId.toString() === req.user._id.toString() || req.user.role === 'admin')
-        );
-      } else {
-        // Non-sequential loop
-        currentStepIndex = expense.approvalFlow.findIndex(
-          flow => flow.status === 'pending' && flow.approverId.toString() === req.user._id.toString()
-        );
-        if (currentStepIndex === -1 && req.user.role === 'admin') {
-           currentStepIndex = expense.approvalFlow.findIndex(flow => flow.status === 'pending');
-        }
-      }
-    }
-
-    // Determine logic type and process
-    if (expense.approvalFlow && expense.approvalFlow.length > 0) {
-      // ─── 1. STRUCTURED WORKFLOW LOGIC ───
-      
-      // Safety: If no step found for this user, they shouldn't be here (redundant check)
-      if (currentStepIndex === -1) {
-        return res.status(403).json({ 
-          message: 'Could not identify your current position in the approval flow. Please contact Admin.' 
-        });
-      }
-
-      const activeStep = expense.approvalFlow[currentStepIndex];
-      activeStep.status = action === 'approve' ? 'approved' : 'rejected';
-      activeStep.comment = comment || '';
-      activeStep.actionDate = Date.now();
-      
-      // Link the actual user ID who took the action (Admin override support)
-      activeStep.approverId = req.user._id;
-
-      if (action === 'reject') {
-        expense.status = 'rejected';
-        expense.currentApproverId = null;
-        expense.currentApproverIds = [];
-      } else {
-        // ACTION: APPROVE
-        if (expense.isSequential !== false) {
-          // ─── Case A: Sequential Flow ───
-          const nextStepIndex = currentStepIndex + 1;
-          
-          if (nextStepIndex < expense.approvalFlow.length) {
-            // Move to next specific person
-            const nextApprover = expense.approvalFlow[nextStepIndex].approverId;
-            expense.currentApproverId = nextApprover;
-            expense.currentApproverIds = [nextApprover];
-            // status remains 'pending'
-          } else {
-            // End of chain reached
-            expense.status = 'approved';
-            expense.currentApproverId = null;
-            expense.currentApproverIds = [];
-          }
-        } else {
-          // ─── Case B: Non-sequential / Hybrid Flow ───
-          const requiredApprovers = expense.approvalFlow.filter(f => f.required !== false);
-          const totalRequired = requiredApprovers.length > 0 ? requiredApprovers.length : expense.approvalFlow.length;
-          
-          const approvedCount = expense.approvalFlow.filter(f => f.status === 'approved' && (f.required !== false || requiredApprovers.length === 0)).length;
-          const currentPercentage = (approvedCount / totalRequired) * 100;
-          const targetPercent = expense.minApprovalPercentage > 0 ? expense.minApprovalPercentage : 100;
-          
-          // VIP OR Logic Check
-          let isVIPApproved = false;
-          if (expense.specificApproverId) {
-            const vipStep = expense.approvalFlow.find(f => f.approverId?.toString() === expense.specificApproverId?.toString());
-            if (vipStep && vipStep.status === 'approved') {
-              isVIPApproved = true;
-            }
-          }
-
-          if (currentPercentage >= targetPercent || isVIPApproved) {
-            expense.status = 'approved';
-            expense.currentApproverId = null;
-            expense.currentApproverIds = [];
-          } else {
-            // Still waiting for others in the pool
-            // Remove current user from the 'waiting' array
-            if (expense.currentApproverIds && expense.currentApproverIds.length > 0) {
-              expense.currentApproverIds = expense.currentApproverIds.filter(id => id.toString() !== req.user._id.toString());
-            }
-            // If they were the last one and threshold not met? 
-            // We keep it pending until either threshold met or specifically rejected/expired.
-          }
-        }
-      }
+    const targetStep = expense.approvalFlow[targetStepIndex];
+    if (!targetStep && isAdmin) {
+       // If no steps left but still pending, Admin decides
+       expense.status = action === 'approve' ? 'approved' : 'rejected';
     } else {
-      // ─── 2. LEGACY ORPHANED LOGIC (Fallback) ───
-      expense.status = action === 'approve' ? 'approved' : 'rejected';
+       // Update the step
+       targetStep.status = action === 'approve' ? 'approved' : 'rejected';
+       targetStep.comment = comment || '';
+       targetStep.actedAt = Date.now();
+    }
+
+    // ─── 2. REJECTION LOGIC (Immediate Stop) ───
+    if (action === 'reject') {
+      expense.status = 'rejected';
       expense.currentApproverId = null;
       expense.currentApproverIds = [];
+      console.log(`[DEBUG] Expense REJECTED: ${expense._id} by ${userId}`);
+    } else {
+      // ─── 3. APPROVAL FLOW LOGIC ───
       
-      // Backfill flow for history records
-      expense.approvalFlow = [{
-        step: 1,
-        approverId: req.user._id,
-        status: action === 'approve' ? 'approved' : 'rejected',
-        comment: comment || `Action taken by ${req.user.role}`,
-        actionDate: Date.now()
-      }];
+      // Case A: Specific Approver (CFO Override)
+      if (expense.specificApproverId && expense.specificApproverId.toString() === userId.toString()) {
+        expense.status = 'approved';
+        expense.currentApproverId = null;
+        expense.currentApproverIds = [];
+        console.log(`[DEBUG] CEO/CFO OVERRRIDE APPROVAL: ${expense._id}`);
+      } else {
+        // Case B: Sequential Flow
+        if (expense.approvalType === 'sequential') {
+          const nextStepIndex = targetStepIndex + 1;
+          if (nextStepIndex < expense.approvalFlow.length) {
+            expense.currentStep = nextStepIndex;
+            expense.currentApproverId = expense.approvalFlow[nextStepIndex].approverId;
+            expense.currentApproverIds = [expense.currentApproverId];
+            console.log(`[DEBUG] Moved to next step: ${nextStepIndex} | Next Approver: ${expense.currentApproverId}`);
+          } else {
+            expense.status = 'approved';
+            expense.currentApproverId = null;
+            expense.currentApproverIds = [];
+            console.log(`[DEBUG] Last step approved: ${expense._id}`);
+          }
+        } 
+        // Case C: Parallel / Percentage check
+        else {
+          const totalSteps = expense.approvalFlow.length;
+          const approvedSteps = expense.approvalFlow.filter(s => s.status === 'approved').length;
+          const currentPercentage = (approvedSteps / totalSteps) * 100;
+
+          if (currentPercentage >= expense.minApprovalPercentage) {
+            expense.status = 'approved';
+            expense.currentApproverId = null;
+            expense.currentApproverIds = [];
+            console.log(`[DEBUG] Percentage criteria met: ${currentPercentage}% | Approved: ${expense._id}`);
+          } else {
+            // Keep current status and allow others to approve
+             console.log(`[DEBUG] Percentage pending: ${currentPercentage}% < ${expense.minApprovalPercentage}%`);
+          }
+        }
+      }
     }
 
     await expense.save();
 
+    const populatedExpense = await Expense.findById(expense._id)
+      .populate('userId', 'name role managerId')
+      .populate('approvalFlow.approverId', 'name');
+
+    // ─── 4. NOTIFY ───
     socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
+      message: `Expense ${expense.description} ${action === 'approve' ? 'Approved' : 'Rejected'} by ${req.user.name}`,
       expenseId: expense._id,
-      status: expense.status,
-      updatedData: expense
+      updatedData: populatedExpense
     });
-    socketUtil.emitToCompany(req.user.companyId, 'analytics_update', { action: 'approval' });
+    
+    // Notify the specific employee
+    socketUtil.emitToUser(expense.userId.toString(), 'status_change', {
+      message: `Your expense request was ${expense.status}`,
+      status: expense.status
+    });
 
     res.status(200).json({
       success: true,
-      message: `Expense ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      message: `Request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
       expense
     });
+
   } catch (error) {
+    console.error('[ERROR] Approval Action:', error);
     next(error);
   }
 };

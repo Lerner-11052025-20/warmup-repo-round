@@ -9,6 +9,7 @@ import ManagerDashboard from '../components/ManagerDashboard'
 import AdminApprovalRules from '../components/AdminApprovalRules'
 import ExpenseHistory from '../components/ExpenseHistory'
 import AnalyticsDashboard from '../components/AnalyticsDashboard'
+import RoleDashboardSummary from '../components/RoleDashboardSummary'
 import {
   Users, UserPlus, Shield, User, Receipt, TrendingUp,
   Mail, Calendar, MoreVertical, History, LayoutDashboard
@@ -45,24 +46,40 @@ export default function DashboardPage() {
   }
 
   const renderContent = () => {
-    if (activeTab === 'dashboard') return <AnalyticsDashboard />
+    // 1. Common Tab: History
     if (activeTab === 'history') return <ExpenseHistory user={user} />
+    
+    // 2. Tab: Analytics (All Roles) - Now dedicated for graphs
+    if (activeTab === 'analytics') return <AnalyticsDashboard role={user?.role} />
 
+    // 3. Tab: Dashboard (Role-specific Summary)
+    if (activeTab === 'dashboard') {
+      return (
+        <div className="space-y-10">
+          <RoleDashboardSummary role={user?.role} />
+          {user?.role === 'employee' && (
+            <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-10">
+               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Create New Reimbursement</h3>
+               <EmployeeDashboard hideHistory={true} /> 
+            </div>
+          )}
+        </div>
+      )
+    }
+    
+    // 4. Admin Specific Tabs
     if (user?.role === 'admin') {
       if (activeTab === 'users') return renderUserManagement()
       if (activeTab === 'rules') return <AdminApprovalRules />
     }
     
+    // 5. Manager Specific Tabs
     if (user?.role === 'manager') {
       if (activeTab === 'approvals') return <ManagerDashboard />
     }
-    
-    if (user?.role === 'employee') {
-       // Could add specific tabs later
-    }
 
-    // Default for any role when dashboard is active (handled at top but keeping structure)
-    return <AnalyticsDashboard />
+    // Default Fallback
+    return <RoleDashboardSummary role={user?.role} />
   }
 
   // ─── ADMIN SPECIFIC: USER MANAGEMENT TAB ───
