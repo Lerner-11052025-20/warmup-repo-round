@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { approvalAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -347,61 +348,64 @@ export default function ManagerDashboard() {
       </div>
 
       {/* ─── MODAL FOR ACTION CONFIRMATION ─── */}
-      <AnimatePresence>
-        {actionModal.isOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={() => setActionModal({ isOpen: false, type: null })}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl z-50 overflow-hidden border border-slate-200 dark:border-slate-800"
-            >
-              <div className={`p-5 text-white ${actionModal.type === 'approve' ? 'bg-emerald-500' : 'bg-red-500'}`}>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  {actionModal.type === 'approve' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
-                  Confirm {actionModal.type === 'approve' ? 'Approval' : 'Rejection'}
-                </h2>
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-                  You are about to <strong>{actionModal.type}</strong> this expense for {selectedExpense?.amount} {selectedExpense?.currency}.
-                </p>
-                
-                <div className="space-y-2 mb-6">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Optional Comment</label>
-                  <textarea 
-                    value={comment} onChange={(e) => setComment(e.target.value)}
-                    placeholder="E.g., Looks good, or Need a better receipt..."
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none resize-none"
-                    rows="3"
-                  />
+      {createPortal(
+        <AnimatePresence>
+          {actionModal.isOpen && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                onClick={() => setActionModal({ isOpen: false, type: null })}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+              >
+                <div className={`p-5 text-white ${actionModal.type === 'approve' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    {actionModal.type === 'approve' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+                    Confirm {actionModal.type === 'approve' ? 'Approval' : 'Rejection'}
+                  </h2>
                 </div>
+                <div className="p-6">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                    You are about to <strong>{actionModal.type}</strong> this expense for {selectedExpense?.amount} {selectedExpense?.currency}.
+                  </p>
+                  
+                  <div className="space-y-2 mb-6">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Optional Comment</label>
+                    <textarea 
+                      value={comment} onChange={(e) => setComment(e.target.value)}
+                      placeholder="E.g., Looks good, or Need a better receipt..."
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 outline-none resize-none"
+                      rows="3"
+                    />
+                  </div>
 
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setActionModal({ isOpen: false, type: null })}
-                    className="flex-1 py-2.5 rounded-xl font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleAction}
-                    disabled={isSubmitting}
-                    className={`flex-1 py-2.5 rounded-xl font-bold text-white transition-all active:scale-95 flex items-center justify-center
-                      ${actionModal.type === 'approve' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30' : 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30'}
-                    `}
-                  >
-                    {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Confirm Action'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setActionModal({ isOpen: false, type: null })}
+                      className="flex-1 py-2.5 rounded-xl font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleAction}
+                      disabled={isSubmitting}
+                      className={`flex-1 py-2.5 rounded-xl font-bold text-white transition-all active:scale-95 flex items-center justify-center
+                        ${actionModal.type === 'approve' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30' : 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30'}
+                      `}
+                    >
+                      {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Confirm Action'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

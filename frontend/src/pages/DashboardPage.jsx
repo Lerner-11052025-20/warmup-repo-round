@@ -6,9 +6,11 @@ import DashboardLayout from '../layouts/DashboardLayout'
 import CreateUserModal from '../components/CreateUserModal'
 import EmployeeDashboard from '../components/EmployeeDashboard'
 import ManagerDashboard from '../components/ManagerDashboard'
+import AdminApprovalRules from '../components/AdminApprovalRules'
+import ExpenseHistory from '../components/ExpenseHistory'
 import {
   Users, UserPlus, Shield, User, Receipt, TrendingUp,
-  Mail, Calendar, MoreVertical
+  Mail, Calendar, MoreVertical, History
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -42,11 +44,17 @@ export default function DashboardPage() {
   }
 
   const renderContent = () => {
+    if (activeTab === 'history') return <ExpenseHistory user={user} />
+
     if (user?.role === 'admin') {
       if (activeTab === 'users') return renderUserManagement()
+      if (activeTab === 'rules') return <AdminApprovalRules />
       return renderAdminDashboard()
     }
-    if (user?.role === 'manager') return renderManagerDashboard()
+    if (user?.role === 'manager') {
+      if (activeTab === 'approvals') return <ManagerDashboard />
+      return renderAdminDashboard() // Or a specific manager dashboard overview
+    }
     return <EmployeeDashboard />
   }
 
@@ -102,12 +110,12 @@ export default function DashboardPage() {
         <motion.button
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
-          onClick={() => setActiveTab('users')}
+          onClick={() => setActiveTab('history')}
           className="p-5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-900 text-left transition-all group"
         >
-          <Users className="w-8 h-8 text-slate-400 mb-2 group-hover:scale-110 transition-transform" />
-          <h3 className="font-semibold text-slate-900 dark:text-white">Manage Users</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400">View and manage all users in your company</p>
+          <History className="w-8 h-8 text-slate-400 mb-2 group-hover:scale-110 transition-transform" />
+          <h3 className="font-semibold text-slate-900 dark:text-white">View Full History</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Monitor all company-wide expense records</p>
         </motion.button>
       </div>
     </div>
@@ -207,12 +215,6 @@ export default function DashboardPage() {
       </div>
     </div>
   )
-
-  // ─── MANAGER DASHBOARD ───
-  const renderManagerDashboard = () => <ManagerDashboard />
-
-  // ─── EMPLOYEE DASHBOARD ───
-  // Moved to separate component: EmployeeDashboard.jsx
 
   return (
     <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>

@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -6,6 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const socketUtil = require('./utils/socket');
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +16,10 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+socketUtil.init(server);
 
 // ─── Security Middleware ───
 app.use(helmet());
@@ -34,8 +40,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // ─── CORS Configuration ───
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000'
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -47,6 +66,7 @@ const userRoutes = require('./routes/userRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
+const approvalRuleRoutes = require('./routes/approvalRuleRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -54,6 +74,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/approvals', approvalRoutes);
+app.use('/api/approval-rules', approvalRuleRoutes);
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {
@@ -78,7 +99,7 @@ app.use(errorHandler);
 // ─── Start Server ───
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`\n🚀 SmartFlow Reimburse AI API Server`);
   console.log(`📡 Running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);

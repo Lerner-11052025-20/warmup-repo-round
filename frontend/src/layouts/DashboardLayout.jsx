@@ -5,24 +5,24 @@ import { useTheme } from '../contexts/ThemeContext'
 import ThemeToggle from '../components/ThemeToggle'
 import {
   Sparkles, LogOut, LayoutDashboard, Users, Receipt, Settings,
-  ChevronLeft, Menu, Bell
+  ChevronLeft, Menu, Bell, History
 } from 'lucide-react'
 
 const sidebarItems = {
   admin: [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'expenses', label: 'All Expenses', icon: Receipt },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'rules', label: 'Approval Rules', icon: Settings },
+    { id: 'history', label: 'Company History', icon: History }
   ],
   manager: [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'approvals', label: 'Approvals', icon: Receipt },
-    { id: 'team', label: 'My Team', icon: Users }
+    { id: 'approvals', label: 'Pending Approvals', icon: Receipt },
+    { id: 'history', label: 'Team History', icon: History }
   ],
   employee: [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'expenses', label: 'My Expenses', icon: Receipt }
+    { id: 'history', label: 'My History', icon: History }
   ]
 }
 
@@ -77,23 +77,30 @@ export default function DashboardLayout({ children, activeTab, onTabChange }) {
         <nav className="flex-1 py-4 px-3 space-y-1">
           {items.map((item) => {
             const isActive = activeTab === item.id
+            const roleActiveStyles = {
+              admin: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400',
+              manager: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400',
+              employee: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400'
+            }
+            const activeClass = roleActiveStyles[user?.role] || 'bg-primary-50 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400'
+
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 shadow-sm'
+                    ? `${activeClass} shadow-sm border border-slate-200/50 dark:border-white/5`
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <item.icon size={20} className="shrink-0" />
+                <item.icon size={20} className={`${isActive ? '' : 'text-slate-400 group-hover:text-slate-600'}`} />
                 <AnimatePresence>
                   {sidebarOpen && (
                     <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
                       className="overflow-hidden whitespace-nowrap"
                     >
                       {item.label}

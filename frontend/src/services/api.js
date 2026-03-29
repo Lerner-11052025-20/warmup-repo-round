@@ -68,7 +68,15 @@ export const uploadAPI = {
 // Approval API
 export const approvalAPI = {
   getPendingApprovals: () => API.get('/approvals/pending'),
-  actionApproval: (data) => API.post('/approvals/action', data) // { expenseId, action: 'approve' | 'reject', comment }
+  actionApproval: (data) => API.post('/approvals/action', data)
+};
+
+// Approval Rules API
+export const approvalRuleAPI = {
+  getRules: () => API.get('/approval-rules'),
+  createRule: (data) => API.post('/approval-rules', data),
+  updateRule: (id, data) => API.put(`/approval-rules/${id}`, data),
+  deleteRule: (id) => API.delete(`/approval-rules/${id}`)
 };
 
 export default API;

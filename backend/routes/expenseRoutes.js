@@ -1,5 +1,10 @@
 const express = require('express');
-const { createExpense, getMyExpenses } = require('../controllers/expenseController');
+const { 
+  createExpense, 
+  getMyExpenses, 
+  getTeamExpenses, 
+  getAllCompanyExpenses 
+} = require('../controllers/expenseController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -9,5 +14,7 @@ router.use(protect);
 
 router.post('/', createExpense);
 router.get('/my', getMyExpenses);
+router.get('/team', getTeamExpenses);
+router.get('/all', getAllCompanyExpenses);
 
 module.exports = router;

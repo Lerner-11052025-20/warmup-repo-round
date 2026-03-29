@@ -15,7 +15,9 @@ exports.getPendingApprovals = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       query.$or = [
         { currentApproverId: req.user._id },
-        { currentApproverId: { $in: [null, undefined] } } // orphans
+        { currentApproverIds: req.user._id },
+        { currentApproverId: { $in: [null, undefined] }, currentApproverIds: { $exists: false } }, // legacy orphans
+        { currentApproverId: { $in: [null, undefined] }, currentApproverIds: { $size: 0 } } // new orphans
       ];
     }
 
@@ -56,55 +58,130 @@ exports.actionApproval = async (req, res, next) => {
     }
 
     // Security Check
-    if (expense.currentApproverId && expense.currentApproverId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    const isDirectMatch = expense.currentApproverId && expense.currentApproverId.toString() === req.user._id.toString();
+    const isArrayMatch = expense.currentApproverIds && expense.currentApproverIds.some(id => id.toString() === req.user._id.toString());
+    const isLegacyOrphan = (!expense.currentApproverId && (!expense.currentApproverIds || expense.currentApproverIds.length === 0));
+
+    if (!isDirectMatch && !isArrayMatch && !isLegacyOrphan && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to approve this expense at this step' });
     }
 
     // Find current step index if this is a structured workflow
     let currentStepIndex = -1;
     if (expense.approvalFlow && expense.approvalFlow.length > 0) {
-      currentStepIndex = expense.approvalFlow.findIndex(
-        flow => flow.status === 'pending' && (flow.approverId.toString() === req.user._id.toString() || req.user.role === 'admin')
-      );
+      if (expense.isSequential !== false) {
+        currentStepIndex = expense.approvalFlow.findIndex(
+          flow => flow.status === 'pending' && (flow.approverId.toString() === req.user._id.toString() || req.user.role === 'admin')
+        );
+      } else {
+        // Non-sequential loop
+        currentStepIndex = expense.approvalFlow.findIndex(
+          flow => flow.status === 'pending' && flow.approverId.toString() === req.user._id.toString()
+        );
+        if (currentStepIndex === -1 && req.user.role === 'admin') {
+           currentStepIndex = expense.approvalFlow.findIndex(flow => flow.status === 'pending');
+        }
+      }
     }
 
-    if (currentStepIndex !== -1) {
-      // 1. STRUCTURED WORKFLOW LOGIC
-      expense.approvalFlow[currentStepIndex].status = action === 'approve' ? 'approved' : 'rejected';
-      expense.approvalFlow[currentStepIndex].comment = comment || '';
-      expense.approvalFlow[currentStepIndex].actionDate = Date.now();
+    // Determine logic type and process
+    if (expense.approvalFlow && expense.approvalFlow.length > 0) {
+      // ─── 1. STRUCTURED WORKFLOW LOGIC ───
       
-      // Also update the actual approver ID if an Admin overrides it
-      expense.approvalFlow[currentStepIndex].approverId = req.user._id; 
+      // Safety: If no step found for this user, they shouldn't be here (redundant check)
+      if (currentStepIndex === -1) {
+        return res.status(403).json({ 
+          message: 'Could not identify your current position in the approval flow. Please contact Admin.' 
+        });
+      }
+
+      const activeStep = expense.approvalFlow[currentStepIndex];
+      activeStep.status = action === 'approve' ? 'approved' : 'rejected';
+      activeStep.comment = comment || '';
+      activeStep.actionDate = Date.now();
+      
+      // Link the actual user ID who took the action (Admin override support)
+      activeStep.approverId = req.user._id;
 
       if (action === 'reject') {
         expense.status = 'rejected';
         expense.currentApproverId = null;
+        expense.currentApproverIds = [];
       } else {
-        const nextStepIndex = currentStepIndex + 1;
-        if (nextStepIndex < expense.approvalFlow.length) {
-          expense.currentApproverId = expense.approvalFlow[nextStepIndex].approverId;
+        // ACTION: APPROVE
+        if (expense.isSequential !== false) {
+          // ─── Case A: Sequential Flow ───
+          const nextStepIndex = currentStepIndex + 1;
+          
+          if (nextStepIndex < expense.approvalFlow.length) {
+            // Move to next specific person
+            const nextApprover = expense.approvalFlow[nextStepIndex].approverId;
+            expense.currentApproverId = nextApprover;
+            expense.currentApproverIds = [nextApprover];
+            // status remains 'pending'
+          } else {
+            // End of chain reached
+            expense.status = 'approved';
+            expense.currentApproverId = null;
+            expense.currentApproverIds = [];
+          }
         } else {
-          expense.status = 'approved';
-          expense.currentApproverId = null;
+          // ─── Case B: Non-sequential / Hybrid Flow ───
+          const requiredApprovers = expense.approvalFlow.filter(f => f.required !== false);
+          const totalRequired = requiredApprovers.length > 0 ? requiredApprovers.length : expense.approvalFlow.length;
+          
+          const approvedCount = expense.approvalFlow.filter(f => f.status === 'approved' && (f.required !== false || requiredApprovers.length === 0)).length;
+          const currentPercentage = (approvedCount / totalRequired) * 100;
+          const targetPercent = expense.minApprovalPercentage > 0 ? expense.minApprovalPercentage : 100;
+          
+          // VIP OR Logic Check
+          let isVIPApproved = false;
+          if (expense.specificApproverId) {
+            const vipStep = expense.approvalFlow.find(f => f.approverId?.toString() === expense.specificApproverId?.toString());
+            if (vipStep && vipStep.status === 'approved') {
+              isVIPApproved = true;
+            }
+          }
+
+          if (currentPercentage >= targetPercent || isVIPApproved) {
+            expense.status = 'approved';
+            expense.currentApproverId = null;
+            expense.currentApproverIds = [];
+          } else {
+            // Still waiting for others in the pool
+            // Remove current user from the 'waiting' array
+            if (expense.currentApproverIds && expense.currentApproverIds.length > 0) {
+              expense.currentApproverIds = expense.currentApproverIds.filter(id => id.toString() !== req.user._id.toString());
+            }
+            // If they were the last one and threshold not met? 
+            // We keep it pending until either threshold met or specifically rejected/expired.
+          }
         }
       }
     } else {
-      // 2. LEGACY ORPHANED LOGIC (Before workflow engine was added)
+      // ─── 2. LEGACY ORPHANED LOGIC (Fallback) ───
       expense.status = action === 'approve' ? 'approved' : 'rejected';
+      expense.currentApproverId = null;
+      expense.currentApproverIds = [];
       
-      if (!expense.approvalFlow) expense.approvalFlow = [];
-      expense.approvalFlow.push({
+      // Backfill flow for history records
+      expense.approvalFlow = [{
         step: 1,
         approverId: req.user._id,
         status: action === 'approve' ? 'approved' : 'rejected',
-        comment: comment || (action === 'approve' ? 'Approved by Manager' : 'Rejected by Manager'),
+        comment: comment || `Action taken by ${req.user.role}`,
         actionDate: Date.now()
-      });
-      expense.currentApproverId = null;
+      }];
     }
 
     await expense.save();
+
+    const socketUtil = require('../utils/socket');
+    socketUtil.emitToCompany(req.user.companyId, 'expense_updated', {
+      expenseId: expense._id,
+      status: expense.status,
+      updatedData: expense
+    });
 
     res.status(200).json({
       success: true,
