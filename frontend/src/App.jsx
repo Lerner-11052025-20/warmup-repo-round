@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 
 import LandingPage from './pages/LandingPage'
 import ProfilePage from './pages/ProfilePage'
+import ChatAssistant from './components/ChatAssistant'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -24,6 +25,13 @@ function GuestRoute({ children }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950"><div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>
   if (user) return <Navigate to="/dashboard" replace />
   return children
+}
+
+// Protected Wrapper for Chat 
+function ChatWrapper() {
+  const { user } = useAuth()
+  if (!user) return null
+  return <ChatAssistant />
 }
 
 function AppRoutes() {
@@ -55,6 +63,7 @@ export default function App() {
             }}
           />
           <AppRoutes />
+          <ChatWrapper />
         </AuthProvider>
       </Router>
     </ThemeProvider>

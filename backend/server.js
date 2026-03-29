@@ -68,6 +68,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
 const approvalRuleRoutes = require('./routes/approvalRuleRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -77,6 +78,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/approval-rules', approvalRuleRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {

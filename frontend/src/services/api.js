@@ -97,4 +97,9 @@ export const analyticsAPI = {
   getCharts: () => API.get('/analytics/charts')
 };
 
+// AI Assistant API
+export const aiAPI = {
+  chat: (data) => API.post('/ai/chat', data)
+};
+
 export default API;

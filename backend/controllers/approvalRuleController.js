@@ -3,13 +3,15 @@ const ApprovalRule = require('../models/ApprovalRule');
 exports.getApprovalRules = async (req, res, next) => {
   try {
     const rules = await ApprovalRule.find({ companyId: req.user.companyId })
-      .populate('targetEmployeeIds', 'name email role')
-      .populate('approvers.approverId', 'name role email')
-      .populate('specificApproverId', 'name role')
+      .populate('targetEmployee', 'name email role')
+      .populate('sequence.userId', 'name role email')
+      .populate('vipApprover', 'name role')
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, count: rules.length, rules });
   } catch (error) {
+    console.error('--- APPROVAL RULES FETCH ERROR ---');
+    console.error(error);
     next(error);
   }
 };
